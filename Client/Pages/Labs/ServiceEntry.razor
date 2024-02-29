@@ -1,0 +1,73 @@
+﻿@using Client.Handlers
+@inject ILabService Service
+
+<EditForm Model="@Data" OnValidSubmit="Save">
+	<DataAnnotationsValidator/>
+	<MudDialog>
+		<TitleContent>
+			<MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Lab Test</MudText>
+		</TitleContent>
+		<DialogContent>
+			<MudTextField @ref="_TxtName" @bind-Value="Data.TestName" Label="Name" Variant="Variant.Outlined" For="@(() => Data.TestName)" />
+			<MudTextField @bind-Value="Data.Rate" Format="N2" Label="Cost" Variant="Variant.Outlined" For="@(() => Data.Rate)"/>			
+		</DialogContent>
+		<DialogActions>
+			<MudButton OnClick="Close">Close</MudButton>
+			<MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+					   Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
+		</DialogActions>
+	</MudDialog>	
+</EditForm>
+
+@code {
+	[CascadingParameter]
+	public MudDialogInstance? DialogInstance { get; set; }	
+	[Parameter]
+	public LabTest Data { get; set; } = new();
+	[Parameter]
+	public bool IsEdit { get; set; } = false;
+
+	MudTextField<string?>? _TxtName { get; set; }
+
+	void Close() => DialogInstance?.Close(DialogResult.Ok(true));
+
+	private async Task Save()
+	{
+		AppState.IsProcessing = true;
+		var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to save", yesText: "Yes", cancelText: "No");
+		if (prompt is null)
+		{
+			AppState.IsProcessing = false;
+			return;
+		}
+
+		try
+		{
+			Data!.TestName = StringConverter.ConvertToTitleCase(Data!.TestName!);			
+			if (!IsEdit)
+				await Service.AddLabTest(Data!);
+			else
+				await Service.EditLabTest(Data!);
+
+			SnackBar.Add("Service Successfully Updated", Severity.Success);
+			AppState.UpdateLayout();
+			await ClearControls();
+		}
+		catch (Exception)
+		{
+			SnackBar.Add("Failed to save", Severity.Error);
+			throw;
+		}
+		AppState.IsProcessing = false;
+	}	
+
+	async Task ClearControls()
+	{
+		if (!IsEdit)
+			Data.Id = Guid.NewGuid();
+		Data.TestName = "";
+		await _TxtName!.FocusAsync();
+	}
+
+
+}

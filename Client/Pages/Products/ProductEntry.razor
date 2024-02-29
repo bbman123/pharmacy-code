@@ -1,0 +1,267 @@
+﻿@layout AppLayout
+@page "/productentry"
+@using Client.Handlers
+@attribute [Authorize]
+@inject IProductService ItemService
+@inject IStoreService StoreService
+
+@if (AppState.IsBusy)
+{
+    <Loader />
+}
+else
+{
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="pa-2">
+         <MudTooltip Text="Back" Duration="2000" Placement="Placement.Top">
+             <MudFab Label="Back" DisableElevation="true" StartIcon="@Icons.Material.Filled.ArrowBack"
+                     OnClick="@(() => nav.NavigateTo("products"))" Color="Color.Dark" Size="Size.Small" />
+         </MudTooltip>
+         <MudText Typo="Typo.h5">@(IsEdit ? "Update" : "Add") Product</MudText>
+     </MudStack>
+    <EditForm Model="Product" OnValidSubmit="Save" Context="ftx">
+        <DataAnnotationsValidator />
+        <MudGrid Spacing="1">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="Product!.ProductName" Label="Product Name" Variant="Variant.Outlined"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="Product!.Barcode" Label="Barcode" Variant="Variant.Outlined"></MudTextField>
+            </MudItem>            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="Product!.Description" Label="Description" Variant="Variant.Outlined"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudAutocomplete T="Category" AnchorOrigin="Origin.BottomCenter" Value="Product!.Category" Label="Category" ShowProgressIndicator="true"
+                                 SearchFunc="@SearchCategory" Dense="true" Variant="Variant.Outlined" ValueChanged="CategoryChanged" ProgressIndicatorColor="Color.Primary"
+                                 ToStringFunc="@(e => e==null ? null : $"{e.CategoryName}")" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudAutocomplete T="Store" AnchorOrigin="Origin.BottomCenter" Value="Product!.Store" Label="Store" ShowProgressIndicator="true"
+                                 SearchFunc="@SearchStore" Dense="true" Variant="Variant.Outlined" ValueChanged="StoreChanged"
+                                 ToStringFunc="@(e => e==null ? null : $"{e.BranchName}")" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="Product!.UnitPrice" Format="N2" Label="Price" Variant="Variant.Outlined"></MudTextField>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="decimal" Disabled="@(IsEdit ? true : false)" @bind-Value="@Product!.StocksOnHand" Immediate="true" Label="Quantity" Min="1" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int" @bind-Value="@Product!.ReorderLevel" Immediate="true" Label="Reorder Level" Min="0" Variant="Variant.Outlined" />
+            </MudItem>            
+            @if (IsEdit)
+            {
+                <MudItem xs="12">
+                    <MudDataGrid T="Stock" Items="Product!.Stocks.OrderByDescending(x => x.Date)" Outlined="true" Context="ctx" Dense="true">
+                        <ToolBarContent>
+                            <MudText Typo="Typo.h6">Stocks</MudText>
+                            <MudSpacer />
+                            <MudTooltip Text="New Stock" Duration="2000" Placement="Placement.Top">
+                                <MudFab Label="New Stock" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+                                        OnClick="@(() => AddStock())" Color="Color.Primary" Size="Size.Small" />
+                            </MudTooltip>
+                        </ToolBarContent>
+                        <Columns>
+                            <PropertyColumn Property="x=>x.Date" Title="Date" />
+                            <PropertyColumn Property="x=>x.Quantity" Title="Quantity" />
+                            <TemplateColumn Context="stx">
+                                <CellTemplate>
+                                    @* <MudFab Size="Size.Small" Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditStock(StockContext))" /> *@
+                                    <MudFab Disabled="@AppState.IsProcessing" Size="Size.Small" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                                            OnClick="@(() => DeleteStock(stx.Item))" />
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="Stock" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudItem>
+            }
+            <MudItem xs="12" sm="6">
+                <div class="d-flex align-center justify-center pa-4">
+                    <MudFab Label="Back" Color="Color.Dark" Size="Size.Medium" Style="width:200px;" OnClick="@(() => nav.NavigateTo("products"))" />
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <div class="d-flex align-center justify-center pa-4">
+                    <MudFab Disabled="@AppState.IsProcessing" Label="@(AppState.IsProcessing ? "Processing" : "Save")" Size="Size.Medium" ButtonType="ButtonType.Submit" Style="width:200px;" Color="Color.Primary" />
+                </div>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+}
+
+@code {
+    private Product? Product = new();
+    private Category[]? Categories = new Category[0];
+    private Store[]? Stores = new Store[0];
+    private bool IsEdit { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.IsBusy = true;
+        var product = await localStorage.GetItemAsync<Product?>("product");
+        product = product is Product && product is not null ? product : null;
+        IsEdit = product! is null ? false : true;
+        if (IsEdit)
+        {
+            Product = product!;
+        }
+        else
+            Product = new Product();
+        AppState.IsBusy = false;
+    }
+
+    private void CategoryChanged(Category category)
+    {
+        Product!.Category = Categories!.FirstOrDefault(x => x.Id == category.Id);
+        Product!.CategoryID = category.Id;
+        StateHasChanged();
+    }
+
+    private async Task<IEnumerable<Category>?> SearchCategory(string value)
+    {
+        try
+        {
+            if (Categories!.Length == 0)
+                Categories = await ItemService.GetCategories();
+            if (string.IsNullOrEmpty(value))
+                return Categories!.OrderBy(x => x.CategoryName);
+
+            return Categories!.Where(x => x.CategoryName!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return new HashSet<Category>();
+    }
+
+    private void StoreChanged(Store branch)
+    {
+        Product!.Store = Stores!.FirstOrDefault(x => x.Id == branch.Id);
+        Product!.StoreId = branch.Id;
+        StateHasChanged();
+    }
+
+    private async Task<IEnumerable<Store>?> SearchStore(string value)
+    {
+        try
+        {
+            if (Stores!.Length == 0)
+                Stores = await StoreService.GetStores();
+            if (string.IsNullOrEmpty(value))
+                return Stores!.OrderBy(x => x.BranchName);
+
+            return Stores!.Where(x => x.BranchName!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return new HashSet<Store>();
+    }
+
+    async Task AddStock()
+    {
+        var parameters = new DialogParameters
+            {
+                ["Product"] = Product,
+                ["Stock"] = new Stock(),
+                ["IsEdit"] = false,
+            };
+        await Dialog.ShowAsync<StockEntry>("", parameters);
+    }
+
+    async Task DeleteStock(Stock stock)
+    {
+        AppState.IsProcessing = true;
+        bool? result = await Dialog.ShowMessageBox("Confirmation",
+        $"Do you wish to Delete Stock?", yesText: "Yes", cancelText: "No");
+        if (result is null)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        else if (!result.Value)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+
+        try
+        {
+            Product!.StocksOnHand -= stock.Quantity;
+            Product!.ModifiedDate = DateTime.Now;
+            Product!.Stocks.Remove(stock);
+            await ItemService.EditProduct(Product!);
+            SnackBar.Add($"Stock Successfully Deleted!", Severity.Success);
+        }
+        catch (System.Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            SnackBar.Add($"Error occured!", Severity.Error);
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            await OnInitializedAsync();
+        }
+    }
+
+    private async Task Save()
+    {
+        AppState.IsProcessing = true;
+        var result = await Dialog.ShowMessageBox("Confirmation",
+        $"Do you wish to {(IsEdit ? "Edit" : "Add")} Product?", yesText: "Yes", cancelText: "No");
+        if (result is null)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        else if (!result.Value)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }        
+        try
+        {
+            Product!.ProductName = StringConverter.ConvertToTitleCase(Product!.ProductName!);
+            Product!.Description = string.IsNullOrEmpty(Product!.Description) ? "" : StringConverter.ConvertToTitleCase(Product!.Description);
+            Product!.ModifiedDate = DateTime.Now;
+            if (!IsEdit)
+            {
+                Product!.Stocks.Add(new Stock
+                {
+                    Date = DateTime.Now,
+                    Quantity = Product!.StocksOnHand
+                });
+                Product!.Id = Guid.NewGuid();
+                Product!.Store = null;
+                Product!.Category = null;
+                await ItemService.AddProduct(Product!);
+            }
+            else
+            {
+                Product!.Store = null;
+                Product!.Category = null;
+                await ItemService.EditProduct(Product!);
+            }
+            SnackBar.Add($"Product successfully saved!", Severity.Success);
+        }
+        catch (System.Exception ex)
+        {
+            Console.WriteLine($"{ex.Message} {ex.StackTrace} {ex.InnerException} {ex.Source}");
+            SnackBar.Add($"Error occured!", Severity.Error);
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            if (!IsEdit)
+                Product = new();
+            else
+                nav.NavigateTo("inventory");
+        }
+    }
+}

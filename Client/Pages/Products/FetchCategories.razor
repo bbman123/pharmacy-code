@@ -1,0 +1,156 @@
+﻿@layout AppLayout
+@inject IProductService ProductService
+@page "/categories"
+@attribute [Authorize]
+
+<MudHidden Breakpoint="Breakpoint.MdAndUp" Invert>
+	<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
+			<MudText Typo="Typo.h5">Manage Categories</MudText>
+			<MudTooltip Text="New Category" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New Category" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
+			</MudTooltip>
+		</MudStack>
+	</MudHidden>
+
+	<MudHidden Breakpoint="Breakpoint.MdAndUp">
+		<MudStack AlignItems="AlignItems.Start" Class="pt-4" Spacing="1">
+			<MudTooltip Text="New Category" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New Category" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
+			</MudTooltip>
+			<MudText Typo="Typo.h5">Manage Categories</MudText>
+		</MudStack>
+	</MudHidden>
+
+<MudDataGrid @ref="_gridComponent"
+		T="Category"
+		ServerData="GetGridData"
+		RowClick="@HandleSelectedDataItemChanged"
+		@bind-SelectedDataItem="category"
+		Outlined>
+	<Columns>
+		<PropertyColumn Title="Name" Property="x => x.CategoryName" />
+		<PropertyColumn Title="Description" Property="x => x.Description" />		
+		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
+		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
+		<TemplateColumn>
+			<CellTemplate>
+				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
+				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
+			</CellTemplate>
+		</TemplateColumn>		
+	</Columns>
+	<NoRecordsContent>
+		<MudText Typo="Typo.h6">Empty record</MudText>
+	</NoRecordsContent>
+	<PagerContent>
+		<MudDataGridPager T="Category" />
+	</PagerContent>
+</MudDataGrid>
+
+
+
+
+@code {
+	private MudDataGrid<Category>? _gridComponent;
+	private Category? category =new();
+	private EditContext? EditContext;
+
+	protected override void OnInitialized()
+	{
+		AppState.OnUpdateLayout += UpdateComponent!;
+		EditContext = new EditContext(category!);
+		base.OnInitialized();
+	}
+
+	private async Task<GridData<Category>> GetGridData(GridState<Category> request)
+	{
+		var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
+		var response = await ProductService.GetPagedCategories(parameter);
+		return new GridData<Category>()
+		{
+			Items = response!.Data!,
+			TotalItems =response.TotalCount
+		};
+	}
+
+	async Task HandleSelectedDataItemChanged(DataGridRowClickEventArgs<Category> category)
+	{
+		await OnEdit(category.Item);
+	}
+
+	private async Task OnNew()
+	{
+		var parameters = new DialogParameters
+			{
+				["Data"] = new Category(),
+				["IsEdit"] = false
+			};
+		await Dialog.ShowAsync<CategoryEntry>("", parameters);
+	}	
+
+	private async Task OnEdit(Category Category)
+	{
+		var parameters = new DialogParameters
+			{
+				["Data"] = Category,
+				["IsEdit"] = true,
+			};
+		await Dialog.ShowAsync<CategoryEntry>("", parameters);
+	}
+
+	private async Task OnDelete(Guid id)
+	{
+		AppState.IsProcessing = true;
+		var mode = await localStorage.GetItemAsync<bool>("mode");
+		var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to delete", yesText: "Yes", cancelText: "No");
+		if (prompt is null)
+		{
+			AppState.IsProcessing = false;
+			return;
+		}
+
+		try
+		{
+			await ProductService.DeleteCategory(id);
+			SnackBar.Add("Category Successfully Deleted", Severity.Success);
+			AppState.UpdateLayout();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex.Message);
+			SnackBar.Add("Operation failed", Severity.Warning);
+		}
+		finally
+		{
+			AppState.IsProcessing = false;
+		}
+	}
+
+
+	private async Task Save()
+	{
+		// AppState.IsProcessing = true
+		var response = await Dialog.ShowMessageBox("Confirm", "Do you want to save...?");
+		if (response is null)
+		{
+			return;
+		}
+		Console.Write("Confirmation working");
+
+		SnackBar.Add("Saved");
+	}
+
+	private async void UpdateComponent(object sender, EventArgs e)
+	{
+		await _gridComponent!.ReloadServerData();
+		StateHasChanged();
+	}
+
+	public void Dispose()
+	{
+		AppState.OnUpdateLayout -= UpdateComponent!;
+	}
+
+}

@@ -1,0 +1,129 @@
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Server.Context;
+using Shared.Helpers;
+using Shared.Models.Customers;
+using Shared.Models.Products;
+
+namespace Server.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class CustomersController : ControllerBase
+{
+	private readonly AppDbContext _context;
+	private readonly ILogger<CategoriesController> _logger;
+
+	public CustomersController(AppDbContext context, ILogger<CategoriesController> logger)
+	{
+		_context = context;
+		_logger = logger;
+	}
+	[HttpPost("paged")]
+	public async Task<ActionResult<GridDataResponse<Customer>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
+	{
+		IQueryable<Customer> query;
+		Customer[] data = new Customer[0];
+		data = await _context.Customers.AsNoTracking().ToArrayAsync(cancellationToken);
+		query = string.IsNullOrEmpty(parameter.SearchTerm) == true ? data.AsQueryable() : data.Where(x => x.ToString()!.Contains(parameter!.SearchTerm!, StringComparison.InvariantCultureIgnoreCase)).AsQueryable();
+		var pagedResult = Paginate(query, parameter);
+		return Ok(pagedResult);
+	}
+
+	[HttpGet]
+	public async Task<ActionResult<IEnumerable<Customer>>> GetCategories()
+	{
+		return await _context.Customers.OrderByDescending(x => x.CreatedDate).ToArrayAsync();
+	}
+
+	[HttpGet("{id}")]
+	public async Task<ActionResult<Customer?>> GetCustomer(Guid id)
+	{
+		if (_context.Customers == null)
+		{
+			return NotFound();
+		}
+		var category = await _context.Customers.FindAsync(id);
+		return category;
+	}
+
+    [HttpGet("byPhone/{phone}")]
+    public async Task<ActionResult<Customer>> ExistCustomer(string phone)
+    {
+        return await _context.Customers.FirstOrDefaultAsync(x => x.PhoneNo == phone) ?? new Customer();
+    }
+
+    // PUT: api/Customers/5
+    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+    [HttpPut("{id}")]
+	public async Task<IActionResult> PutCustomer(Guid id, Customer category)
+	{
+		if (id != category.Id)
+		{
+			return BadRequest();
+		}
+
+		_context.Entry(category).State = EntityState.Modified;
+
+		try
+		{
+			await _context.SaveChangesAsync();
+		}
+		catch (DbUpdateConcurrencyException)
+		{
+			if (!CustomerExists(id))
+			{
+				return NotFound();
+			}
+			else
+			{
+				throw;
+			}
+		}
+
+		return NoContent();
+	}
+
+	// POST: api/Customers
+	// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+
+	[HttpPost]
+	public async Task<ActionResult<Customer>> PostCustomer(Customer category)
+	{
+		if (_context.Customers == null)
+		{
+			return Problem("Entity set 'AppDbContext.Customers'  is null.");
+		}
+		_context.Customers.Add(category);
+		await _context.SaveChangesAsync();
+
+		return CreatedAtAction("GetCustomer", new { id = category.Id }, category);
+	}
+
+
+
+	public static GridDataResponse<Customer> Paginate(IQueryable<Customer> source, PaginationParameter parameters)
+	{
+		int totalItems = source.Count();
+		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);
+
+		List<Customer> items = new();
+		items = source
+					.OrderByDescending(c => c.CreatedDate)
+					.Skip(parameters.Page)
+					.Take(parameters.PageSize)
+					.ToList();
+
+		return new GridDataResponse<Customer>
+		{
+			Data = items,
+			TotalCount = totalItems
+		};
+	}
+
+	private bool CustomerExists(Guid id)
+	{
+		return (_context.Customers?.Any(e => e.Id == id)).GetValueOrDefault();
+	}
+}

@@ -1,0 +1,52 @@
+﻿@layout AppLayout
+@page "/dashboard"
+@attribute [Authorize]
+
+<MudText Typo="Typo.h5">Dashboard</MudText>
+<AuthorizeView>
+    <Authorized>
+    <MudGrid>             
+        <MudItem xs="12">
+            <TopChartsView IsLoading="@model.IsBusy" customers="@model.TotalCustomers" branch="@model.TotalBranches"
+                           employees="@model.TotalEmployees" products="@model.TotalProducts"/>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @* <SalesLineChartView IsLoading="@model.IsBusy" Data="@model.ServiceSales" /> *@
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @* <ServiceTopSales IsLoading="@model.IsBusy" Data="@model.ServicePieChart" /> *@
+        </MudItem>       
+        <MudItem xs="12" sm="6" md="4">
+            @* <ServiceTopCustomer IsLoading="@model.IsBusy" customer="@model.ServiceTopCustomer"/> *@
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @* <ProductsLineChartView IsLoading="@model.IsBusy" Data="@model.ProductSales" /> *@
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            @* <ProductTopSold IsLoading="@model.IsBusy" Data="@model.ProductPieChart"/> *@
+        </MudItem>       
+        <MudItem xs="12" sm="6" md="4">
+            @* <ProductTopCustomer IsLoading="@model.IsBusy" customer="@model.ProductTopCustomer"/> *@
+        </MudItem>
+
+    </MudGrid>
+    </Authorized>
+</AuthorizeView>
+@code {
+
+    DashboardModel model = new();
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        model.IsBusy = true;
+        var authState = await authenticationStateTask!;
+        var user = authState.User;
+        if (!user.Identity!.IsAuthenticated)
+        {
+            nav.NavigateTo("login");
+        }
+        // model = await DashboardService.GetDashboard();
+        model.IsBusy = false;
+    }
+}
