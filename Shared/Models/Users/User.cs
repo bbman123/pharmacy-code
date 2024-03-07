@@ -27,6 +27,7 @@ public class User
     [DataType(DataType.Password)]
     public string? HashedPassword { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsNew { get; set; } = true;
     public UserRole Role { get; set; }
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public DateTime ModifiedDate { get; set; }

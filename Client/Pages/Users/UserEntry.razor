@@ -1,0 +1,129 @@
+﻿@using Client.Handlers
+@using Shared.Enums
+@inject IUserService Service
+
+<EditForm Model="@Data" OnValidSubmit="Save">
+	<DataAnnotationsValidator/>
+	<MudDialog>
+		<TitleContent>
+			<MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") User</MudText>
+		</TitleContent>
+		<DialogContent>
+			<MudGrid Spacing="1">
+				<MudItem xs="12" sm="6">
+					<MudTextField @ref="_TxtName" @bind-Value="Data.FirstName" Label="First Name" Variant="Variant.Outlined" For="@(() => Data.FirstName)" />
+				</MudItem>
+				<MudItem xs="12" sm="6">
+					<MudTextField @bind-Value="Data.LastName" Label="Last Name" Variant="Variant.Outlined" For="@(() => Data.LastName)" />
+				</MudItem>
+				<MudItem xs="12">
+					<MudTextField @bind-Value="Data.Username" Label="Useranme" Variant="Variant.Outlined" For="@(() => Data.Username)" />
+				</MudItem>
+				<MudItem xs="12">
+					<MudRadioGroup T="bool" Value="@Data.IsActive" Class="d-flex flex-row gap-2 align-center justify-center">
+						<MudRadio Size="Size.Small" Color="Color.Tertiary" Value="@true">Active</MudRadio>
+						<MudRadio Size="Size.Small" Color="Color.Error" Value="@false">In Active</MudRadio>
+					</MudRadioGroup>
+				</MudItem>
+				<MudItem xs="12" sm="6">
+					<MudSelect T="UserRole" Dense="true" AnchorOrigin="Origin.BottomCenter" Strict="true" Label="Access Level" @bind-Value="Data.Role" Variant="Variant.Outlined">
+						@foreach (UserRole role in Enum.GetValues(typeof(UserRole)))
+						{
+							<MudSelectItem Value="@role">@role</MudSelectItem>
+						}
+					</MudSelect>
+				</MudItem>
+				@if (Data!.Role != UserRole.Admin)
+				{
+					<MudItem xs="12" sm="6">
+						<MudSelect T="Guid" Dense="true" AnchorOrigin="Origin.BottomCenter" Strict="true" Label="Stores" @bind-Value="StoreID" Variant="Variant.Outlined">
+							@foreach (var store in stores!)
+							{
+								<MudSelectItem Value="@store.Id">@store.BranchName</MudSelectItem>
+							}
+						</MudSelect>
+					</MudItem>
+				}								
+			</MudGrid>						
+		</DialogContent>
+		<DialogActions>
+			<MudButton OnClick="Close">Close</MudButton>
+			<MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+					   Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
+		</DialogActions>
+	</MudDialog>	
+</EditForm>
+
+@code {
+	[CascadingParameter]
+	public MudDialogInstance? DialogInstance { get; set; }	
+	[Parameter]
+	public User Data { get; set; } = new();
+	[Parameter]
+	public bool IsEdit { get; set; } = false;
+	[Parameter]
+	public Store[]? stores { get; set; } = [];
+	MudTextField<string?>? _TxtName { get; set; }
+
+	private Guid StoreID { get; set; }
+
+	void Close() => DialogInstance?.Close(DialogResult.Ok(true));
+
+	private async Task Save()
+	{
+		AppState.IsProcessing = true;
+		var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to save", yesText: "Yes", cancelText: "No");
+		if (prompt is null)
+		{
+			AppState.IsProcessing = false;
+			return;
+		}
+
+		var UsernameExist = await Service.GetUser(Data!.Username!);
+		if (UsernameExist is not null)
+		{
+			await Dialog.ShowMessageBox("Information", "Username is already taken, Please change!");
+			AppState.IsProcessing = false;
+			return;
+		}
+
+		try
+		{
+			if (Data!.Role == UserRole.Admin)
+				Data!.StoreId = null;
+
+			Data!.FirstName = StringConverter.ConvertToTitleCase(Data!.FirstName!);			
+			Data!.LastName = StringConverter.ConvertToTitleCase(Data!.LastName!);
+
+			if (Data!.IsNew)
+				Data!.HashedPassword = Security.Encrypt("NotSet");
+
+			if (!IsEdit)
+				await Service.AddUser(Data!);
+			else
+				await Service.EditUser(Data!);
+
+			SnackBar.Add("User Successfully Updated", Severity.Success);
+			AppState.UpdateLayout();
+			await ClearControls();
+		}
+		catch (Exception)
+		{
+			SnackBar.Add("Failed to save", Severity.Error);
+			throw;
+		}
+		AppState.IsProcessing = false;
+	}	
+
+	async Task ClearControls()
+	{
+		if (!IsEdit)
+			Data.Id = Guid.NewGuid();
+		Data.FirstName = "";
+		Data.LastName = "";
+		Data.Username = "";
+		await _TxtName!.FocusAsync();
+	}
+
+
+}

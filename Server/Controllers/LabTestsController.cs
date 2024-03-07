@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Server.Context;
+using Shared.Enums;
 using Shared.Helpers;
 using Shared.Models.Labs;
 
@@ -31,10 +32,18 @@ public class LabTestsController : ControllerBase
 	}
 
 	[HttpGet]
-	public async Task<ActionResult<IEnumerable<LabTest>>> GetCategories()
+	public async Task<ActionResult<IEnumerable<LabTest>>> GetServices()
 	{
 		return await _context.LabTests.OrderByDescending(x => x.CreatedDate).ToArrayAsync();
 	}
+    
+    [HttpGet("type/{type}")]
+	public async Task<ActionResult<IEnumerable<LabTest>>> GetServices(ServiceType type)
+	{
+		return await _context.LabTests.Where(x => x.Type == type).OrderByDescending(x => x.CreatedDate).ToArrayAsync();
+	}
+
+
 
 	[HttpGet("{id}")]
 	public async Task<ActionResult<LabTest?>> GetLabTest(Guid id)

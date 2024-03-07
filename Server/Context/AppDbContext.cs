@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Shared.Helpers;
+using Shared.Models.Charges;
 using Shared.Models.Company;
 using Shared.Models.Customers;
 using Shared.Models.Labs;
@@ -27,5 +27,6 @@ public partial class AppDbContext : DbContext
     public DbSet<LabTest> LabTests  { get; set; }
     public DbSet<LabOrder> LabOrders  { get; set; }
     public DbSet<LabOrderItem> LabOrderItems  { get; set; }
-    public DbSet<LabDiagonse> LabDiagonses  { get; set; }
+    public DbSet<LabDiagnose> LabDiagonses  { get; set; }
+    public DbSet<Charge> Charges  { get; set; }
 }

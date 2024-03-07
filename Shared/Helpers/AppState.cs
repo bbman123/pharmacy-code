@@ -11,7 +11,10 @@ public class AppState
    
     public event EventHandler? OnUpdateLayout;
     public void UpdateLayout() => OnUpdateLayout?.Invoke(this, EventArgs.Empty);
-    public object? SelectedOption { get; set; }
+    public event EventHandler<bool>? RefererHandler;
+    public void RefererSelected(bool value) => RefererHandler?.Invoke(this, value);
+    public string? SelectedOption { get; set; }
+    public Guid GlobalID { get; set; }
     public bool IsProcessing { get; set; }
     public bool IsBusy { get; set; }
 	public bool Entry { get; set; }

@@ -1,5 +1,5 @@
 ﻿using Shared.Enums;
-using Shared.Helpers;
+using Shared.Models.Orders;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

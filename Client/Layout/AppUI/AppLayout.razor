@@ -25,11 +25,15 @@
             {
                 <AuthorizeView Roles="Admin">
                     <MudNavMenu Color="Color.Primary" Margin="Margin.Dense" Rounded="true" Class="pa-2">
-                        <MudNavLink Href="/dashboard">Dashboard</MudNavLink>
-                        <MudNavLink Href="/customers">Customers</MudNavLink>
+                        <MudNavLink Href="/dashboard">Dashboard</MudNavLink>                        
+                        <MudNavGroup Title="Customers" ExpandIcon="@Icons.Material.Filled.ExpandMore">
+                            <MudNavLink Href="/customers">Customers</MudNavLink>
+                            <MudNavLink Href="/referers">Referers</MudNavLink>                            
+                        </MudNavGroup>
                         <MudNavGroup Title="Items" ExpandIcon="@Icons.Material.Filled.ExpandMore">
                             <MudNavLink Href="/categories">Categories</MudNavLink>
                             <MudNavLink Href="/products">Products</MudNavLink>
+                            <MudNavLink Href="/charges">Charges</MudNavLink>
                         </MudNavGroup>
                         <MudNavGroup Title="Lab" ExpandIcon="@Icons.Material.Filled.ExpandMore">
                             <MudNavLink Href="/services">Lab Services</MudNavLink>

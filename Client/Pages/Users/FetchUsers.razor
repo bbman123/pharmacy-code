@@ -1,0 +1,187 @@
+﻿@layout AppLayout
+@inject IUserService Service
+@inject IStoreService StoreService
+@page "/users"
+@attribute [Authorize]
+
+<MudHidden Breakpoint="Breakpoint.MdAndUp" Invert>
+	<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
+			<MudText Typo="Typo.h5">Manage Users</MudText>
+			<MudTooltip Text="New User" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New User" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
+			</MudTooltip>
+		</MudStack>
+	</MudHidden>
+
+	<MudHidden Breakpoint="Breakpoint.MdAndUp">
+		<MudStack AlignItems="AlignItems.Start" Class="pt-4" Spacing="1">
+			<MudTooltip Text="New User" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New User" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
+			</MudTooltip>
+			<MudText Typo="Typo.h5">Manage Users</MudText>
+		</MudStack>
+	</MudHidden>
+<div style="width:250px">
+		<MudSelect T="Guid" Dense="true" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense" Strict="true" Label="Search By Store" Value="@StoreID" ValueChanged="StoreChanged" Variant="Variant.Outlined">
+			@foreach (var branch in stores!)
+		{
+			<MudSelectItem Value="@branch.Id">@branch.BranchName</MudSelectItem>
+		}
+	</MudSelect>
+</div>
+<MudDataGrid 
+		T="User"		
+		Items="Users"
+		RowClick="@HandleSelectedDataItemChanged"
+		@bind-SelectedDataItem="user"
+		Outlined>
+	<Columns>
+		<PropertyColumn Title="Store" Property="x => x.Store!.BranchName" />		
+		<PropertyColumn Title="Name" Property="x => x.ToString()" />		
+		<PropertyColumn Title="Role" Property="x => x.Role.ToString()" />		
+		<TemplateColumn>
+			<CellTemplate>
+				@if (context.Item.IsActive)
+				{
+					<MudChip Size="Size.Small" Color="Color.Tertiary">Active</MudChip>
+				}
+				else
+				{
+					<MudChip Size="Size.Small" Color="Color.Error">InActive</MudChip>					
+				}
+			</CellTemplate>
+		</TemplateColumn>
+		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
+		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
+		<TemplateColumn>
+			<CellTemplate>
+				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
+				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
+			</CellTemplate>
+		</TemplateColumn>		
+	</Columns>
+	<NoRecordsContent>
+		<MudText Typo="Typo.h6">Empty record</MudText>
+	</NoRecordsContent>
+	<PagerContent>
+		<MudDataGridPager T="User" />
+	</PagerContent>
+</MudDataGrid>
+
+
+
+
+@code {
+	private User? user = new();
+	private MudDataGrid<User>? _gridComponent;
+	private User[]? Users = [];
+
+	private Guid StoreID;
+	private Store? Store; private Store[]? stores = [];
+
+	protected override async Task OnInitializedAsync()
+	{
+		AppState.OnUpdateLayout += UpdateComponent!;		
+		await GetUsers();		
+	}
+	async Task GetUsers()
+	{
+		Users = await Service.GetUsers(StoreID);		
+		stores = await StoreService.GetStores();
+		Store = stores!.FirstOrDefault();
+		StoreID = Store!.Id;
+		StateHasChanged();
+	}
+	async void StoreChanged(Guid id)
+	{
+		Store = stores!.FirstOrDefault(x => x.Id == id);
+		StoreID = Store!.Id;
+		await GetUsers();
+		StateHasChanged();
+	}
+
+
+
+	async Task HandleSelectedDataItemChanged(DataGridRowClickEventArgs<User> user)
+	{
+		await OnEdit(user.Item);
+	}
+
+	private async Task OnNew()
+	{
+		var parameters = new DialogParameters
+			{
+				["Data"] = new User(),
+				["stores"] = stores,
+				["IsEdit"] = false
+			};
+		await Dialog.ShowAsync<UserEntry>("", parameters);
+	}	
+
+	private async Task OnEdit(User User)
+	{
+		var parameters = new DialogParameters
+			{
+				["Data"] = User,
+				["stores"] = stores,
+				["IsEdit"] = true,
+			};
+		await Dialog.ShowAsync<UserEntry>("", parameters);
+	}
+
+	private async Task OnDelete(Guid id)
+	{
+		AppState.IsProcessing = true;
+		var mode = await localStorage.GetItemAsync<bool>("mode");
+		var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to delete", yesText: "Yes", cancelText: "No");
+		if (prompt is null)
+		{
+			AppState.IsProcessing = false;
+			return;
+		}
+
+		try
+		{
+			await Service.DeleteUser(id);
+			SnackBar.Add("User Successfully Deleted", Severity.Success);
+			AppState.UpdateLayout();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex.Message);
+			SnackBar.Add("Operation failed", Severity.Warning);
+		}
+		finally
+		{
+			AppState.IsProcessing = false;
+		}
+	}
+
+
+	private async Task Save()
+	{
+		// AppState.IsProcessing = true
+		var response = await Dialog.ShowMessageBox("Confirm", "Do you want to save...?");
+		if (response is null)
+		{
+			return;
+		}
+		Console.Write("Confirmation working");
+
+		SnackBar.Add("Saved");
+	}
+
+	private async void UpdateComponent(object sender, EventArgs e)
+	{
+		await InvokeAsync(GetUsers);
+		StateHasChanged();
+	}
+
+	public void Dispose()
+	{
+		AppState.OnUpdateLayout -= UpdateComponent!;
+	}
+
+}

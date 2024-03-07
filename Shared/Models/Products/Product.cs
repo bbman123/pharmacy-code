@@ -28,12 +28,16 @@ public class Product
     [Column(TypeName = "decimal(18,2)")]
     public decimal StocksOnHand { get; set; } = 0M;
     public int ReorderLevel { get; set; }
+    public DateOnly? ManufacturedDate { get; set; }
+    public DateOnly? ExpiryDate { get; set; }
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public DateTime ModifiedDate { get; set; }
     [ForeignKey("CategoryID")]
     public virtual Category? Category { get; set; }
     [Column(TypeName = "jsonb")]
     public virtual List<Stock> Stocks { get; set; } = new();
+    [Column(TypeName = "jsonb")]
+    public virtual List<Stock> Returned { get; set; } = new();
     [ForeignKey(nameof(StoreId))]
     public virtual Store? Store { get; set; }
     public virtual ICollection<ProductOrderItem> OrderItems { get; set; } = new List<ProductOrderItem>();

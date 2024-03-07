@@ -10,135 +10,106 @@
 }
 else
 {
-    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pa-2">
-         <MudText Typo="Typo.h5">Manage Sales</MudText>
-         <MudChipSet @bind-SelectedChip="selected" Filter="true" Mandatory="true">
-             <MudChip Text="Lab" Color="Color.Primary" Default="true">Lab</MudChip>
-             <MudChip Text="Products" Color="Color.Secondary">Products</MudChip>
-        </MudChipSet>
-     </MudStack>
-     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width:200px;">
-         <AuthorizeView Roles="Admin, Seller,Lab" Context="auth">
-             <Authorized>
-                 <MudSelect T="Guid" Dense="true" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense" Strict="true" Label="Search By Store" Value="@StoreID" ValueChanged="StoreChanged" Variant="Variant.Outlined">
-                     @foreach (var branch in stores!)
-                    {
-                        <MudSelectItem Value="@branch.Id">@branch.BranchName</MudSelectItem>
-                    }
-                </MudSelect>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="Admin, Seller, " Context="auth">
+    <MudHidden Breakpoint="Breakpoint.MdAndUp" Invert>
+     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
+             <MudText Typo="Typo.h5">Manage Sales</MudText>
+             <MudToggleGroup T="string" Style="width: 300px;" Value="AppState.SelectedOption" ValueChanged="OptionChanged" Outline Delimiters Dense Rounded CheckMark FixedContent>
+                <MudToggleItem Value="@("Lab")" />
+                <MudToggleItem Value="@("Pharmacy")" />
+            </MudToggleGroup>
+         </MudStack>
+     </MudHidden>
+
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack AlignItems="AlignItems.Start" Class="pt-4" Spacing="1">                        
+            <MudText Typo="Typo.h5">Manage Sales</MudText>
+            <MudToggleGroup T="string" Style="width: 300px;" Value="AppState.SelectedOption" ValueChanged="OptionChanged" Outline Delimiters Dense Rounded CheckMark FixedContent>
+                <MudToggleItem Value="@("Lab")" />
+                <MudToggleItem Value="@("Pharmacy")" />
+         </MudToggleGroup>
+        </MudStack>
+    </MudHidden>    
+     <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
+         <div style="width:250px;">
+             <AuthorizeView Roles="Admin" Context="auth">
+                 <Authorized>
+                     <MudSelect T="Guid" Dense="true" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense" Strict="true" Label="Search By Store" Value="@AppState!.GlobalID" ValueChanged="StoreChanged" Variant="Variant.Outlined">
+                         @foreach (var branch in stores!)
+                        {
+                            <MudSelectItem Value="@branch.Id">@branch.BranchName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="Seller">
+                <Authorized>
+                    <MudItem xs="12">
+                        <MudTextField Label="Store" ReadOnly="true" @bind-Value="Store!.BranchName" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                </Authorized>
+            </AuthorizeView>
+         </div>         
+        <AuthorizeView Roles="Admin, Seller" Context="auth">
             <Authorized>
                 <MudTooltip Text="New Sale" Duration="2000" Placement="Placement.Top">
-                    <MudFab Label="New Sale" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
-                            OnClick="@(() => nav.NavigateTo("orderentry"))" Color="Color.Primary" Size="Size.Small" />
+                    <MudFab Label="New Sale" DisableElevation="true"
+                            OnClick="() => NavigateToSales()" Color="Color.Primary" Size="Size.Small" />
                 </MudTooltip>
             </Authorized>
         </AuthorizeView>
-    </MudStack>    
-    <MudDataGrid @ref="_gridComponent"
-                 T="OrderWithData"
-                 ServerData="GetGridData"
-                 RowClick="@HandleSelectedDataItemChanged"
-                 @bind-SelectedDataItem="data"
-                 Dense 
-                 Outlined>
-        <ToolBarContent>
-            <MudSpacer/>
-            <MudTextField @bind-Value="searchString" Placeholder="Search" Immediate="true"
-                        Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-        </ToolBarContent>
-        <Columns>
-            <PropertyColumn Property="x => x.ReceiptNo" Title="#"/>
-            <PropertyColumn Property="x => x.Date" Title="Date" Format="dd/MM/yyyy"/>
-            <PropertyColumn Property="x => x.TotalAmount" Title="Total" Format="N2"/>            
-            <PropertyColumn Property="x => x.SubTotal" Title="Sub Total" Format="N2"/>            
-            <PropertyColumn Property="x => x.ModifiedDate" Title="Modified Date"/>            
-            <TemplateColumn>
-                <CellTemplate>
-                    <MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnExpand(context.Item.Id)" Size="Size.Small">Edit</MudButton>
-                    <MudButton StartIcon="@Icons.Material.Filled.Print" Color="Color.Info" OnClick="() => Print(context.Item.Id)" Size="Size.Small">Print</MudButton>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <NoRecordsContent>
-            <MudText Typo="Typo.h6">No records found</MudText>
-        </NoRecordsContent>
-        <PagerContent>
-            <MudDataGridPager T="Order" />
-        </PagerContent>
-    </MudDataGrid>
+    </MudStack> 
+    
+    @if (AppState.SelectedOption == "Lab")
+    {
+        <LabOrders/>
+    }
+    else        
+    {
+        <PharmacyOrders/>
+    }
 }
 
 @code {
-    private MudDataGrid<OrderWithData>? _gridComponent;
-    private OrderWithData? data;
-    MudChip selected = new() { Text = "Lab"};
-    private Order[]? Orders = new Order[0];
-    private string searchString = "";
-    private Guid StoreID, UserID;
+    private EventHandler? OnChange;
+    private Guid UserID;
     private Store? Store; private Store[]? stores = new Store[0];
     protected override async Task OnInitializedAsync()
     {
         AppState.IsBusy = true;
+        AppState.SelectedOption = "Lab";
         UserID = await localStorage.GetItemAsync<Guid>("uid");
         var access = await localStorage.GetItemAsync<string?>("access");
         if (access == "Admin")
         {
             stores = await StoreService.GetStores();
             Store = stores!.FirstOrDefault();
-            StoreID = Store!.Id;
+            AppState!.GlobalID = Store!.Id;
         }
         else
         {
-            StoreID = await localStorage.GetItemAsync<Guid>("branch");
-            Store = await StoreService.GetStore(StoreID);
+            AppState!.GlobalID = await localStorage.GetItemAsync<Guid>("branch");
+            Store = await StoreService.GetStore(AppState!.GlobalID);
         }
-        // await GetData(StoreID);
         AppState.IsBusy = false;
     }
-    private async Task<GridData<OrderWithData>> GetGridData(GridState<OrderWithData> request)
+    void NavigateToSales()
     {
-        var parameter = new PaginationParameter { FilterId = StoreID, Page = request.Page, PageSize = request.PageSize };
-        var response = await OrderService.GetOrderByStore(selected.Text, parameter);
-        return new GridData<OrderWithData>()
-        {
-            Items = response!.Data!,
-            TotalItems = response.TotalCount
-        };
+        nav.NavigateTo("order");
     }
 
-    // async Task GetData(Guid id)
-    // {
-    //     PaginationParameter parameter = new PaginationParameter{ FilterId = id, }
-    //     Orders = await OrderService.GetOrderByStore(StoreID);
-    // }
-
-    void HandleSelectedDataItemChanged(DataGridRowClickEventArgs<OrderWithData> item)
-    {
-        OnExpand(item.Item.Id);
-    }
-
-    void StoreChanged(Guid id)
+    async void StoreChanged(Guid id)
     {
         Store = stores!.FirstOrDefault(x => x.Id == id);
-        StoreID = Store!.Id;
-        StateHasChanged();
+        AppState!.GlobalID = Store!.Id;  
     }
 
-    void OnExpand(Guid id)
+    async void OptionChanged(string option)
     {
-        nav.NavigateTo($"manageorder/{id}/{selected!.Text}");
-    }
+        AppState.SelectedOption = option;                
+    }    
 
-    async Task Print(Guid id)
+    void FireChange(object sender, EventArgs e)
     {
-        AppState.IsProcessing = true;
-        // var report = await OrderService.GetReportData(id);
-        // await OrderService.GetReceipt(report);
-        await Task.Delay(100);
-        AppState.IsProcessing = false;
-    }
 
+    }
 }

@@ -4,16 +4,20 @@ using Client.Handlers;
 using Client.Logging;
 using Client.Services.AppService;
 using Client.Services.Auth;
+using Client.Services.Charges;
 using Client.Services.Company;
 using Client.Services.Customers;
 using Client.Services.Dashboard;
 using Client.Services.Labs;
 using Client.Services.Orders;
 using Client.Services.Products;
+using Client.Services.Referers;
+using Client.Services.Users;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+using QuestPDF.Infrastructure;
 using Shared.Models;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -52,5 +56,10 @@ builder.Services.AddTransient<ILabService, LabService>();
 builder.Services.AddTransient<IDashboardService, DashboardService>();
 builder.Services.AddTransient<IOrderService, OrderService>();
 builder.Services.AddTransient<IStoreService, StoreService>();
+builder.Services.AddTransient<IRefererService, RefererService>();
+builder.Services.AddTransient<IUserService, UserService>();
+builder.Services.AddTransient<IChargeService, ChargeService>();
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 await builder.Build().RunAsync();

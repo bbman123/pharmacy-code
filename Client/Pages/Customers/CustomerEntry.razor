@@ -80,7 +80,7 @@
         {
             AppState.IsProcessing = false;
             if (!string.IsNullOrEmpty(RedirectRoute))
-                nav.NavigateTo(RedirectRoute);
+                Cancel();
             else
                 AppState.UpdateLayout();
         }

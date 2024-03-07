@@ -7,10 +7,13 @@ namespace Client.Services.Users;
 public interface IUserService
 {
     Task<User?> GetUser(Guid id);
+    Task<User?> GetUser(string username);
     Task<bool> AddUser(User model);
     Task<bool> EditUser(User model);
     Task<bool> DeleteUser(Guid id);
     Task<User[]?> GetUsers();
+    Task<User[]?> GetUsers(Guid storeId);
+    Task<User[]?> GetActiveUsers();
 }
 
 public class UserService : IUserService
@@ -80,11 +83,50 @@ public class UserService : IUserService
         }
     }
 
+    public async Task<User?> GetUser(string username)
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<User?>($"api/users/username/{username}");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
     public async Task<User[]?> GetUsers()
     {
         try
         {
             return await _client.CreateClient("AppUrl").GetFromJsonAsync<User[]?>($"api/users");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    
+    public async Task<User[]?> GetActiveUsers()
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<User[]?>($"api/users/active");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task<User[]?> GetUsers(Guid storeId)
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<User[]?>($"api/users/byStore/{storeId}");
         }
         catch (Exception)
         {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualBasic;
+using Shared.Enums;
 using Shared.Helpers;
 using Shared.Models.Labs;
 using System.Net.Http.Json;
@@ -12,7 +13,9 @@ public interface ILabService
     Task<bool> EditLabTest(LabTest model);
     Task<bool> DeleteLabTest(Guid id);
     Task<LabTest?> GetLabTest(Guid id);
+    Task<LabDiagnose?> GetOrderDiagnose(Guid id);
     Task<LabTest[]?> GetLabTests();
+    Task<LabTest[]?> GetLabTests(ServiceType type);
     Task<GridDataResponse<LabTest>?> GetPagedTests(PaginationParameter parameter);
 }
 public class LabService : ILabService
@@ -94,6 +97,35 @@ public class LabService : ILabService
             throw;
         }
     }
+
+    public async Task<LabTest[]?> GetLabTests(ServiceType type)
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<LabTest[]?>($"api/labtests/type/{type}");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task<LabDiagnose?> GetOrderDiagnose(Guid id)
+    {
+        LabDiagnose? diagnose;
+        try
+        {
+            diagnose = await _client.CreateClient("AppUrl").GetFromJsonAsync<LabDiagnose?>($"api/diagnosis/investigations/{id}");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+        return diagnose;
+    }
+
     public async Task<GridDataResponse<LabTest>?> GetPagedTests(PaginationParameter parameter)
     {
 		try

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Server.Context;
 using Shared.Helpers;
 using Shared.Models.Labs;
+using Shared.Models.Orders;
 
 namespace Server.Controllers;
 
@@ -20,15 +21,16 @@ public class LabOrdersController : ControllerBase
 		_logger = logger;
 	}
 	[HttpPost("paged")]
-	public async Task<ActionResult<GridDataResponse<LabOrder>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
+	public async Task<ActionResult<GridDataResponse<OrderWithData>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
 	{
 		IQueryable<LabOrder> query;
 		LabOrder[] data = [];
 		data = await _context.LabOrders.AsNoTracking()
-                                 .AsSplitQuery()
-                                 .Include(x => x.Store)
-                                 .Where(store => store.StoreId == parameter.FilterId)
-                                 .ToArrayAsync(cancellationToken);
+                                       .AsSplitQuery()
+                                       .Include(x => x.Store)
+                                       .Include(x => x.Items)
+                                       .Where(store => store.StoreId == parameter.FilterId)
+                                       .ToArrayAsync(cancellationToken);
 		query = data.AsQueryable();
         var pagedResult = Paginate(query, parameter);
 		return Ok(pagedResult);
@@ -47,13 +49,32 @@ public class LabOrdersController : ControllerBase
 		{
 			return NotFound();
 		}
-		var order = await _context.LabOrders.FindAsync(id);
+        var order = await _context.LabOrders.AsNoTracking()
+                                      .AsSplitQuery()
+                                      .Include(s => s!.Customer!)
+                                      .Include(s => s!.User!)
+                                      .Include(s => s!.Store!)
+                                      .Include(s => s!.Items!)
+                                      .Include(s => s!.Diagonses!)
+                                      .ThenInclude(s => s!.LabScientist)
+                                      .SingleOrDefaultAsync(x => x.Id == id);
 		return order;
 	}
 
-	// PUT: api/LabOrders/5
-	// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-	[HttpPut("{id}")]
+    [HttpGet("receiptno/{id}")]
+    public async Task<ActionResult<int>> GetReceiptNo(Guid id)
+    {
+        var result = await _context.LabOrders.Where(b => b.StoreId == id)
+                                          .Select(i => i.ReceiptNo)
+                                          .CountAsync();
+        result += 1;
+
+        return result;
+    }
+
+    // PUT: api/LabOrders/5
+    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+    [HttpPut("{id}")]
 	public async Task<IActionResult> PutLabOrder(Guid id, LabOrder order)
 	{
 		if (id != order.Id)
@@ -100,19 +121,30 @@ public class LabOrdersController : ControllerBase
 
 
 
-	public static GridDataResponse<LabOrder> Paginate(IQueryable<LabOrder> source, PaginationParameter parameters)
+	public static GridDataResponse<OrderWithData> Paginate(IQueryable<LabOrder> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);
 
-		List<LabOrder> items = new();
+		List<OrderWithData> items = new();
 		items = source
 					.OrderByDescending(c => c.CreatedDate)
 					.Skip(parameters.Page)
 					.Take(parameters.PageSize)
-					.ToList();
+                    .Select(x => new OrderWithData
+                    {
+                        Id = x.Id,
+                        Date = x.OrderDate,
+                        StoreName = x.Store!.BranchName,
+                        OrderType = "Lab",
+                        ReceiptNo = x.ReceiptNo,
+                        TotalAmount = x.Total,
+                        Status = x.Status,
+                        CreatedDate = x.CreatedDate,
+                        ModifiedDate = x.ModifiedDate
+                    }).ToList();
 
-		return new GridDataResponse<LabOrder>
+        return new GridDataResponse<OrderWithData>
 		{
 			Data = items,
 			TotalCount = totalItems

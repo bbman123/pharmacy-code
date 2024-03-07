@@ -48,10 +48,19 @@ else
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudNumericField T="int" @bind-Value="@Product!.ReorderLevel" Immediate="true" Label="Reorder Level" Min="0" Variant="Variant.Outlined" />
-            </MudItem>            
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int" @bind-Value="@Product!.ReorderLevel" Immediate="true" Label="Reorder Level" Min="0" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker  @bind-Date="_MfgDate" DateFormat="dd/MM/yyyy" Label="Manufactured Date" Variant="Variant.Outlined" For="(() => _MfgDate)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_ExpDate" DateFormat="dd/MM/yyyy" Label="Expiry Date" Variant="Variant.Outlined" For="(() => _ExpDate)" />
+            </MudItem>
             @if (IsEdit)
             {
-                <MudItem xs="12">
+                <MudItem xs="12" sm="6">
                     <MudDataGrid T="Stock" Items="Product!.Stocks.OrderByDescending(x => x.Date)" Outlined="true" Context="ctx" Dense="true">
                         <ToolBarContent>
                             <MudText Typo="Typo.h6">Stocks</MudText>
@@ -71,6 +80,32 @@ else
                                             OnClick="@(() => DeleteStock(stx.Item))" />
                                 </CellTemplate>
                             </TemplateColumn>
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="Stock" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDataGrid T="Stock" Items="Product!.Returned.OrderByDescending(x => x.Date)" Outlined="true" Context="ctx" Dense="true">
+                        <ToolBarContent>
+                            <MudText Typo="Typo.h6">Returned</MudText>
+                            <MudSpacer />
+                            @* <MudTooltip Text="New Stock" Duration="2000" Placement="Placement.Top">
+                                <MudFab Label="New Stock" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+                                        OnClick="@(() => AddStock())" Color="Color.Primary" Size="Size.Small" />
+                            </MudTooltip> *@
+                        </ToolBarContent>
+                        <Columns>
+                            <PropertyColumn Property="x=>x.Date" Title="Date" />
+                            <PropertyColumn Property="x=>x.Quantity" Title="Quantity" />
+@*                             <TemplateColumn Context="stx">
+                                <CellTemplate>
+                                    <MudFab Size="Size.Small" Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditStock(StockContext))" />
+                                    <MudFab Disabled="@AppState.IsProcessing" Size="Size.Small" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                                            OnClick="@(() => DeleteStock(stx.Item))" />
+                                </CellTemplate>
+                            </TemplateColumn> *@
                         </Columns>
                         <PagerContent>
                             <MudDataGridPager T="Stock" />
@@ -97,6 +132,8 @@ else
     private Category[]? Categories = new Category[0];
     private Store[]? Stores = new Store[0];
     private bool IsEdit { get; set; }
+
+    private DateTime? _MfgDate, _ExpDate;
 
     protected override async Task OnInitializedAsync()
     {

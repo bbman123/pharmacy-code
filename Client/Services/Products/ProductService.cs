@@ -20,13 +20,13 @@ public interface IProductService
     Task<bool> DeleteProduct(Guid id);
     Task<Product?> GetProductById(Guid id);
     Task<Product[]?> GetProducts();
+    Task<Product[]?> GetProductsByStore(Guid storeId);
 	Task<GridDataResponse<Product>?> GetPagedProducts(PaginationParameter parameter);
 }
 
 public class ProductService : IProductService
 {
     private readonly IHttpClientFactory _client;
-
     public ProductService(IHttpClientFactory client)
     {
         _client = client;
@@ -201,5 +201,10 @@ public class ProductService : IProductService
 
             throw;
         }
+    }
+
+    public async Task<Product[]?> GetProductsByStore(Guid storeId)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<Product[]?>($"api/products/byBranch/{storeId}");
     }
 }

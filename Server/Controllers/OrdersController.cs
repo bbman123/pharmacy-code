@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Server.Context;
@@ -7,6 +8,7 @@ using Shared.Models.Orders;
 
 namespace Server.Controllers;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class OrdersController : ControllerBase
@@ -20,15 +22,16 @@ public class OrdersController : ControllerBase
 		_logger = logger;
 	}
 	[HttpPost("paged")]
-	public async Task<ActionResult<GridDataResponse<Order>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
+	public async Task<ActionResult<GridDataResponse<OrderWithData>>> PagedOrders(PaginationParameter parameter, CancellationToken cancellationToken)
 	{
 		IQueryable<Order> query;
-		Order[] data = new Order[0];
+        Order[] data = [];
         data = await _context.Orders.AsNoTracking()
-                                 .AsSplitQuery()
-                                 .Include(x => x.Store)
-                                 .Where(store => store.StoreId == parameter.FilterId)
-                                 .ToArrayAsync(cancellationToken);
+                                    .AsSplitQuery()
+                                    .Include(x => x.Store)
+                                    .Include(x => x.ProductOrders)
+                                    .Where(store => store.StoreId == parameter.FilterId)
+                                    .ToArrayAsync(cancellationToken);
         query = data.AsQueryable();
         var pagedResult = Paginate(query, parameter);
 		return Ok(pagedResult);
@@ -81,11 +84,21 @@ public class OrdersController : ControllerBase
 
 		return NoContent();
 	}
+    
+    [HttpGet("receiptno/{id}")]
+    public async Task<ActionResult<int>> GetReceiptNo(Guid id)
+    {
+        var result = await _context.Orders.Where(b => b.StoreId == id)
+                                          .Select(i => i.ReceiptNo)
+                                          .CountAsync();
+        result += 1;
 
-	// POST: api/Orders
-	// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        return result;
+    }
 
-	[HttpPost]
+    // POST: api/Orders
+    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+    [HttpPost]
 	public async Task<ActionResult<Order>> PostOrder(Order category)
 	{
 		if (_context.Orders == null)
@@ -100,19 +113,29 @@ public class OrdersController : ControllerBase
 
 
 
-	public static GridDataResponse<Order> Paginate(IQueryable<Order> source, PaginationParameter parameters)
+	public static GridDataResponse<OrderWithData> Paginate(IQueryable<Order> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);
 
-		List<Order> items = new();
+		List<OrderWithData> items = new();
 		items = source
 					.OrderByDescending(c => c.CreatedDate)
 					.Skip(parameters.Page)
 					.Take(parameters.PageSize)
-					.ToList();
+                    .Select(x => new OrderWithData
+                    {
+                        Id = x.Id,
+                        Date = x.OrderDate,
+                        StoreName = x.Store!.BranchName,
+                        OrderType = "Pharmacy",
+                        ReceiptNo = x.ReceiptNo,
+                        TotalAmount = x.TotalAmount,
+                        CreatedDate = x.CreatedDate,
+                        ModifiedDate = x.ModifiedDate
+                    }).ToList();
 
-		return new GridDataResponse<Order>
+		return new GridDataResponse<OrderWithData>
 		{
 			Data = items,
 			TotalCount = totalItems

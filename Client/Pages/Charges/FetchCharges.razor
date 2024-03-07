@@ -1,0 +1,167 @@
+﻿@layout AppLayout
+@inject IChargeService Service
+@page "/charges"
+@using Shared.Enums
+@attribute [Authorize]
+
+<MudHidden Breakpoint="Breakpoint.MdAndUp" Invert>
+	<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
+			<MudText Typo="Typo.h5">Manage Charges</MudText>
+			<MudTooltip Text="New Charges" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New Charges" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
+			</MudTooltip>
+		</MudStack>
+	</MudHidden>
+
+	<MudHidden Breakpoint="Breakpoint.MdAndUp">
+		<MudStack AlignItems="AlignItems.Start" Class="pt-4" Spacing="1">
+			<MudTooltip Text="New Charges" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New Charges" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
+			</MudTooltip>
+			<MudText Typo="Typo.h5">Manage Charges</MudText>
+		</MudStack>
+	</MudHidden>
+
+<MudDataGrid @ref="_gridComponent"
+		T="Charge"
+		ServerData="GetGridData"
+		RowClick="@HandleSelectedDataItemChanged"
+		@bind-SelectedDataItem="category"
+		Outlined>
+	<Columns>
+		<PropertyColumn Title="Name" Property="x => x.ChargeName" />		
+		<PropertyColumn Title="Cost" Property="x => x.Rate" Format="N2" />		
+		<TemplateColumn Title="Type">
+			<CellTemplate>
+				@if (context.Item.Type == RefererType.Doctor)
+				{
+					<MudChip Size="Size.Small" Color="Color.Primary">Doctor</MudChip>
+				}
+				else
+				{
+					<MudChip Size="Size.Small" Color="Color.Secondary">Escort</MudChip>					
+				}
+			</CellTemplate>
+		</TemplateColumn>
+		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
+		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
+		<TemplateColumn>
+			<CellTemplate>
+				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
+				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
+			</CellTemplate>
+		</TemplateColumn>		
+	</Columns>
+	<NoRecordsContent>
+		<MudText Typo="Typo.h6">Empty record</MudText>
+	</NoRecordsContent>
+	<PagerContent>
+		<MudDataGridPager T="Charge" />
+	</PagerContent>
+</MudDataGrid>
+
+
+
+
+@code {
+	private MudDataGrid<Charge>? _gridComponent;
+	private Charge? category =new();
+
+	protected override void OnInitialized()
+	{
+		AppState.OnUpdateLayout += UpdateComponent!;
+		base.OnInitialized();
+	}
+
+	private async Task<GridData<Charge>> GetGridData(GridState<Charge> request)
+	{
+		var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
+		var response = await Service.GetPagedCharges(parameter);
+		return new GridData<Charge>()
+		{
+			Items = response!.Data!,
+			TotalItems =response.TotalCount
+		};
+	}
+
+	async Task HandleSelectedDataItemChanged(DataGridRowClickEventArgs<Charge> category)
+	{
+		await OnEdit(category.Item);
+	}
+
+	private async Task OnNew()
+	{
+		var parameters = new DialogParameters
+			{
+				["Data"] = new Charge(),
+				["IsEdit"] = false
+			};
+		await Dialog.ShowAsync<ChargeEntry>("", parameters);
+	}	
+
+	private async Task OnEdit(Charge Charge)
+	{
+		var parameters = new DialogParameters
+			{
+				["Data"] = Charge,
+				["IsEdit"] = true,
+			};
+		await Dialog.ShowAsync<ChargeEntry>("", parameters);
+	}
+
+	private async Task OnDelete(Guid id)
+	{
+		AppState.IsProcessing = true;
+		var mode = await localStorage.GetItemAsync<bool>("mode");
+		var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to delete", yesText: "Yes", cancelText: "No");
+		if (prompt is null)
+		{
+			AppState.IsProcessing = false;
+			return;
+		}
+
+		try
+		{
+			await Service.DeleteCharge(id);
+			SnackBar.Add("Charge Successfully Deleted", Severity.Success);
+			AppState.UpdateLayout();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex.Message);
+			SnackBar.Add("Operation failed", Severity.Warning);
+		}
+		finally
+		{
+			AppState.IsProcessing = false;
+		}
+	}
+
+
+	private async Task Save()
+	{
+		// AppState.IsProcessing = true
+		var response = await Dialog.ShowMessageBox("Confirm", "Do you want to save...?");
+		if (response is null)
+		{
+			return;
+		}
+		Console.Write("Confirmation working");
+
+		SnackBar.Add("Saved");
+	}
+
+	private async void UpdateComponent(object sender, EventArgs e)
+	{
+		await _gridComponent!.ReloadServerData();
+		StateHasChanged();
+	}
+
+	public void Dispose()
+	{
+		AppState.OnUpdateLayout -= UpdateComponent!;
+	}
+
+}

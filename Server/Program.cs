@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Npgsql;
 using Microsoft.IdentityModel.Tokens;
 using Server.Data;
+using Server.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,7 +53,10 @@ builder.Services.AddAuthentication(x =>
     };
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(hubOptions => {
+     hubOptions.EnableDetailedErrors = true;
+     hubOptions.KeepAliveInterval = System.TimeSpan.FromMinutes(1000);
+ });
 
 var app = builder.Build();
 
@@ -80,6 +84,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers();
+app.MapHub<SignalRHubs>("/hubs");
 app.MapFallbackToFile("index.html");
 
 app.Run();

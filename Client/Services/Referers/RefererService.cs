@@ -1,4 +1,6 @@
-﻿using Shared.Models.Users;
+﻿using Shared.Enums;
+using Shared.Helpers;
+using Shared.Models.Users;
 using System.Net.Http.Json;
 using System.Reflection;
 
@@ -11,6 +13,8 @@ public interface IRefererService
     Task<bool> DeleteReferer(Guid id);
     Task<Referer?> GetReferer(Guid id);
     Task<Referer[]?> GetReferers();
+    Task<Referer[]?> GetReferers(RefererType type);
+    Task<GridDataResponse<Referer>?> GetPagedReferers(PaginationParameter parameter);
 }
 public class RefererService : IRefererService
 {
@@ -84,6 +88,33 @@ public class RefererService : IRefererService
         try
         {
             return await _client.CreateClient("AppUrl").GetFromJsonAsync<Referer[]?>($"api/referers");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task<Referer[]?> GetReferers(RefererType type)
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<Referer[]?>($"api/referers/byType/{type}");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task<GridDataResponse<Referer>?> GetPagedReferers(PaginationParameter parameter)
+    {
+        try
+        {
+            var response = await _client.CreateClient("AppUrl").PostAsJsonAsync("api/referers/paged", parameter);
+            return await response.Content.ReadFromJsonAsync<GridDataResponse<Referer>?>();
         }
         catch (Exception)
         {

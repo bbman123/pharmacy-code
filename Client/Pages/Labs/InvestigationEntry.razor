@@ -1,0 +1,59 @@
+﻿@using Shared.Enums
+@implements IDisposable
+
+@* <EditForm Model="@Account" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Sub Account</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Account!.AccountName" Label="Account Name" ReadOnly Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="SubAccount!.AccountName" Label="Sub Account Name" For="@(() => SubAccount!.AccountName)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                     <MudTextField Lines="2" @bind-Value="SubAccount!.Description" Label="Description " For="@(() => SubAccount!.Description)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                     <SubAccountList Data="@Items" IsLoading="@IsBusy" />
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Close">Close</MudButton>
+            <MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                       Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
+        </DialogActions>
+    </MudDialog>
+
+</EditForm> *@
+
+ @code {
+    [CascadingParameter]
+    public MudDialogInstance? DialogInstance { get; set; }
+    [Parameter]
+    public bool IsEdit { get; set; } = false;
+    public bool IsBusy { get; set; } = false;    
+
+    void Close() => DialogInstance?.Close(DialogResult.Ok(true));
+
+    protected override async Task OnInitializedAsync()
+    {        
+        await GetData();
+    }
+
+    private async Task GetData()
+    {
+        IsBusy = true;        
+        IsBusy = false;
+    }
+
+    public void Dispose()
+    {        
+        Console.WriteLine("Component disposed");
+    }
+}

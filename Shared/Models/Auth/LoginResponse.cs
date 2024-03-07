@@ -10,8 +10,9 @@ namespace Shared.Models.Auth;
 public class LoginResponse
 {
     public Guid Id { get; set; }
+    public Guid? StoreId { get; set; }   
     public string? Username { get; set; }
-    public UserRole Role { get; set; }
+    public string? Role { get; set; }
     public bool IsActive { get; set; } = true;
     public string? Token { get; set; }
 }

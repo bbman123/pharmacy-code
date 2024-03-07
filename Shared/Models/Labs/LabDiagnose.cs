@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 
 namespace Shared.Models.Labs;
 
-public class LabDiagonse
+public class LabDiagnose
 {
     [Required] public Guid Id { get;set; }
-    public Guid LabOrderId { get; set; } 
-    public Guid LabTestId { get; set; }  
+    public Guid LabOrderId { get; set; }
+    public Guid LabTestId { get; set; }
     public Guid LabScientistId { get; set; }
     [Column(TypeName = "jsonb")]
     public List<LabTestResult> Results { get; set; } =new List<LabTestResult>();
@@ -22,7 +22,5 @@ public class LabDiagonse
     [ForeignKey(nameof(LabTestId))]
     public virtual LabTest? Test { get; set; }
     [ForeignKey(nameof(LabScientistId))]
-    public virtual User? LabScientist { get; set; }    
-
-
+    public virtual User? LabScientist { get; set; }
 }

@@ -6,14 +6,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shared.Helpers
+namespace Shared.Models.Orders
 {
     public class OrderReferer
     {
         [Required]
         public Guid Id { get; set; }
-        public Guid OrderId {  get; set; }
-        public Guid LabOrderId {  get; set; }
+        public Guid? OrderId { get; set; }
+        public Guid? LabOrderId { get; set; }
         public Guid RefererId { get; set; }
         public decimal Price { get; set; }
         public PaymentStatus PaymentStatus { get; set; }

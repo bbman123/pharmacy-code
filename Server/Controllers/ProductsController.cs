@@ -61,9 +61,40 @@ public class ProductsController : ControllerBase
 		return Product;
 	}
 
-	// PUT: api/Product/5
-	// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-	[HttpPut("{id}")]
+    // GET: api/Products/5
+    [HttpGet("byBranch/{id}")]
+    public async Task<ActionResult<IEnumerable<Product>>> GetProductsByBranch(Guid id)
+    {
+        var products = await _context.Products.AsSplitQuery()
+                                             .Include(b => b.Store)
+                                             .Include(c => c.Category)
+                                             .Where(x => x.StoreId == id && x.StocksOnHand >= 1)
+                                             .OrderByDescending(x => x.ModifiedDate)
+                                             .Select(p => new Product
+                                             {
+                                                 Id = p.Id,
+                                                 Barcode = p.Barcode,
+                                                 ProductName = p.ProductName,
+                                                 Description = p.Description,
+                                                 CategoryID = p.CategoryID,
+                                                 UnitPrice = p.UnitPrice,
+                                                 ReorderLevel = p.ReorderLevel,
+                                                 StocksOnHand = p.StocksOnHand,
+                                                 CreatedDate = p.CreatedDate,
+                                                 ModifiedDate = p.ModifiedDate
+                                             }).ToArrayAsync();
+
+        if (products == null)
+        {
+            return NotFound();
+        }
+
+        return products;
+    }
+
+    // PUT: api/Product/5
+    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+    [HttpPut("{id}")]
 	public async Task<IActionResult> PutProduct(Guid id, Product Product)
 	{
 		if (id != Product.Id)

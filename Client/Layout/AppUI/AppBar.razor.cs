@@ -14,6 +14,7 @@ public partial class AppBar
     private string _badgeTextSoon = "coming soon";
     private bool _searchDialogOpen;
     private MudMenu _menuCP;
+    private MudMenu _menuCustomers;
     private MudMenu _menuLabs;
     private MudMenu _menuServices;
     private MudMenu _menuSales;
@@ -24,6 +25,8 @@ public partial class AppBar
             _menuCP.CloseMenu();
         else if (menu == "labs")
             _menuLabs.CloseMenu();
+        else if (menu == "customers")
+            _menuCustomers.CloseMenu();
         else
             _menuSales.CloseMenu();
         NavigationManager.NavigateTo(page);

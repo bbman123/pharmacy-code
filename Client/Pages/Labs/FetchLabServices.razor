@@ -1,13 +1,14 @@
 ﻿@layout AppLayout
 @inject ILabService Service
 @page "/services"
+@using Shared.Enums
 @attribute [Authorize]
 
 <MudHidden Breakpoint="Breakpoint.MdAndUp" Invert>
 	<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
-			<MudText Typo="Typo.h5">Manage Lab Services</MudText>
-			<MudTooltip Text="New LabTest" Duration="2000" Placement="Placement.Top">
-				<MudFab Label="New LabTest" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+			<MudText Typo="Typo.h5">Manage Services</MudText>
+			<MudTooltip Text="New Service" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New Service" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
 						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
 			</MudTooltip>
 		</MudStack>
@@ -15,11 +16,11 @@
 
 	<MudHidden Breakpoint="Breakpoint.MdAndUp">
 		<MudStack AlignItems="AlignItems.Start" Class="pt-4" Spacing="1">
-			<MudTooltip Text="New LabTest" Duration="2000" Placement="Placement.Top">
-				<MudFab Label="New LabTest" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
+			<MudTooltip Text="New Service" Duration="2000" Placement="Placement.Top">
+				<MudFab Label="New Service" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add"
 						OnClick="@(() => OnNew())" Color="Color.Primary" Size="Size.Small" />
 			</MudTooltip>
-			<MudText Typo="Typo.h5">Manage Lab Services</MudText>
+			<MudText Typo="Typo.h5">Manage Services</MudText>
 		</MudStack>
 	</MudHidden>
 
@@ -32,6 +33,18 @@
 	<Columns>
 		<PropertyColumn Title="Name" Property="x => x.TestName" />		
 		<PropertyColumn Title="Cost" Property="x => x.Rate" Format="N2" />		
+		<TemplateColumn Title="Type">
+			<CellTemplate>
+				@if (context.Item.Type == ServiceType.Lab)
+				{
+					<MudChip Size="Size.Small" Color="Color.Surface">Lab</MudChip>
+				}
+				else
+				{
+					<MudChip Size="Size.Small" Color="Color.Tertiary">Consultation</MudChip>					
+				}
+			</CellTemplate>
+		</TemplateColumn>
 		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
 		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
 		<TemplateColumn>

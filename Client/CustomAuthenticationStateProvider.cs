@@ -54,12 +54,14 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
             await _localStorage.RemoveItemAsync("token");
             await _localStorage.RemoveItemAsync("uid");
             await _localStorage.RemoveItemAsync("access");
+            await _localStorage.RemoveItemAsync("branch");
         }
         else
         {
             await _localStorage.SetItemAsync("token", response.Token);
             await _localStorage.SetItemAsync("uid", response.Id);            
             await _localStorage.SetItemAsync("access", response.Role);
+            await _localStorage.SetItemAsync("branch", response.StoreId);
         }
 
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());

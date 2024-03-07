@@ -10,6 +10,5 @@ public enum PaymentMode
 {
     Cash,
     POS,
-    Bank,
     Transfer
 }
