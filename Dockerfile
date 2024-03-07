@@ -32,7 +32,7 @@ FROM build AS publish
 RUN dotnet publish "/src/Server" -c Release -o /app/publish --no-restore
 
 #final build
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 COPY --from=publish /app/publish .
 CMD ASPNETCORE_URLS=http://*:$PORT dotnet Server.dll
