@@ -23,9 +23,9 @@ RUN apt-get install -y python3
 WORKDIR /src
 RUN dotnet workload install wasm-tools
 COPY . .
-# COPY ["Server/Hylook_Update.Server.csproj", "Server/"]
-# COPY ["Client/Hylook_Update.Client.csproj", "Client/"]
-# COPY ["Shared/Hylook_Update.Shared.csproj", "Shared/"]
+COPY ["Server/Server.csproj", "Server/"]
+COPY ["Client/Client.csproj", "Client/"]
+COPY ["Shared/Shared.csproj", "Shared/"]
 RUN dotnet restore
 COPY . .
 FROM build AS publish
