@@ -24,7 +24,7 @@ builder.Services.AddRazorPages();
 
 string ConnectionString = string.Empty;
 #if DEBUG
-    ConnectionString = builder.Configuration.GetConnectionString("Local")!;
+    ConnectionString = builder.Configuration.GetConnectionString("Production")!;
 #else
     ConnectionString = builder.Configuration.GetConnectionString("Production");
 #endif
