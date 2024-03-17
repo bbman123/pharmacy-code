@@ -49,6 +49,10 @@
 		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
 		<TemplateColumn>
 			<CellTemplate>
+@* 				@if (context.Item.Type == ServiceType.Lab)
+				{
+					<MudButton StartIcon="@Icons.Material.Filled.Search" Color="Color.Primary" OnClick="() => AddFindings(context.Item)" Size="Size.Small">Findings</MudButton>
+				} *@
 				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
 				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
 			</CellTemplate>
@@ -100,6 +104,18 @@
 			};
 		await Dialog.ShowAsync<ServiceEntry>("", parameters);
 	}	
+
+	private async Task AddFindings(LabTest test)
+	{
+		var parameters = new DialogParameters
+			{
+				["id"] = test.Id,
+				["ServiceName"] = test.TestName,
+				["Route"] = null,
+				["IsEdit"] = false
+			};
+		await Dialog.ShowAsync<Client.Pages.Orders.InvestigationEntry>("", parameters);
+	}
 
 	private async Task OnEdit(LabTest LabTest)
 	{

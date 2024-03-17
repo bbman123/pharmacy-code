@@ -74,7 +74,7 @@ public class DiagnosisController : ControllerBase
     // PUT: api/LabDiagonse/5
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutCategory(Guid id, LabDiagnose diagonse)
+    public async Task<IActionResult> PutDiagnose(Guid id, LabDiagnose diagonse)
     {
         if (id != diagonse.Id)
         {
@@ -89,7 +89,7 @@ public class DiagnosisController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!CategoryExists(id))
+            if (!DiagnoseExists(id))
             {
                 return NotFound();
             }
@@ -102,11 +102,11 @@ public class DiagnosisController : ControllerBase
         return NoContent();
     }
 
-    // POST: api/Categorys
+    // POST: api/Diagnoses
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
 
     [HttpPost]
-    public async Task<ActionResult<LabDiagnose>> PostCategory(LabDiagnose diagonse)
+    public async Task<ActionResult<LabDiagnose>> PostDiagnose(LabDiagnose diagonse)
     {
         if (_context.LabDiagonses == null)
         {
@@ -139,7 +139,7 @@ public class DiagnosisController : ControllerBase
         };
     }
 
-    private bool CategoryExists(Guid id)
+    private bool DiagnoseExists(Guid id)
     {
         return (_context.LabDiagonses?.Any(e => e.Id == id)).GetValueOrDefault();
     }

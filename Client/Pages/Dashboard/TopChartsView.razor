@@ -20,47 +20,62 @@
     {
         <MudItem xs="12" sm="3" md="3">
             <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;" Outlined="true">
-                <MudIcon Icon="@Icons.Material.Filled.OtherHouses" Color="Color.Primary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+                <MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Color="Color.Dark" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
                 <div style="width:100%;">
-                    <MudText Typo="Typo.h6" Class="mud-text-secondary mb-n1">Stores</MudText>
-                    <MudText Class="d-flex justify-end pa-3" Typo="Typo.h6">@branch</MudText>
+                    <h3 class="mud-text-secondary mb-n1">Customers</h3>                    
+                    <MudText Class="d-flex justify-start mb-n1" Typo="Typo.h6">@Customers</MudText>
                 </div>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="3" md="3">
             <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;" Outlined="true">
-                <MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Color="Color.Secondary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+                <MudIcon Icon="@Icons.Material.Filled.LocalPrintshop" Color="Color.Primary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
                 <div style="width:100%;">
-                    <MudText Typo="Typo.h6" Class="mud-text-secondary mb-n1">Sales</MudText>
-                    <MudText Class="d-flex justify-end pa-3" Typo="Typo.h6">@employees</MudText>
+                    <h3 class="mud-text-secondary mb-n1">Sales</h3>
+                    @* <MudText Typo="Typo.h6" Class="mud-text-secondary mb-n1">Sales</MudText> *@
+                    <MudText Class="d-flex justify-start mb-n1" Typo="Typo.h6">@Sales</MudText>
                 </div>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="3" md="3">
             <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;" Outlined="true">
-                <MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Color="Color.Tertiary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+                <MudIcon Icon="@Icons.Material.Filled.LocalPrintshop" Color="Color.Secondary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
                 <div style="width:100%;">
-                    <MudText Typo="Typo.h6" Class="mud-text-secondary mb-n1">Customers</MudText>
-                    <MudText Class="d-flex justify-end pa-3" Typo="Typo.h6">@customers</MudText>
+                    <h3 class="mud-text-secondary mb-n1">Pharmacy Sales</h3>
+                    @* <MudText Typo="Typo.h6" Class="mud-text-secondary mb-n1">Pharmacy Sales</MudText> *@
+                    <MudText Class="d-flex justify-start mb-n1" Typo="Typo.h6">@PharmacySales</MudText>
                 </div>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="3" md="3">
+            <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;" Outlined="true">
+                <MudIcon Icon="@Icons.Material.Filled.LocalPrintshop" Color="Color.Tertiary" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
+                <div style="width:100%;">
+                    <h3 class="mud-text-secondary mb-n1">Lab Sales</h3>
+                    <MudText Class="d-flex justify-start mb-n1" Typo="Typo.h6">@LabSales</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>        
+        @* <MudItem xs="12" sm="3" md="3">
             <MudPaper Class="d-flex flex-row pt-6 pb-4" Style="height:100px;" Outlined="true">
                 <MudIcon Icon="@Icons.Material.Filled.Category" Color="Color.Error" Class="mx-4" Style="width:54px; height:54px;"></MudIcon>
                 <div style="width:100%;">
                     <MudText Typo="Typo.h6" Class="mud-text-secondary mb-n1">Products</MudText>
-                    <MudText Class="d-flex justify-end pa-3"Typo="Typo.h6">@products</MudText>
+                    <MudText Class="d-flex justify-start pa-3"Typo="Typo.h6">@products</MudText>
                 </div>
             </MudPaper>
-        </MudItem>
+        </MudItem> *@
     }
 </MudGrid>
 @code {
     [Parameter, EditorRequired] public bool IsLoading { get; set; } = false;
-    [Parameter, EditorRequired] public int customers { get; set; } = 0;
-    [Parameter, EditorRequired] public int products { get; set; } = 0;
-    [Parameter, EditorRequired] public int employees { get; set; } = 0;
-    [Parameter, EditorRequired] public int branch { get; set; } = 0;    
-
+    [Parameter, EditorRequired] public int Customers { get; set; } = 0;    
+    [Parameter, EditorRequired] public int Sales { get; set; } = 0;
+    [Parameter, EditorRequired] public int PharmacySales { get; set; } = 0;
+    [Parameter, EditorRequired] public int LabSales { get; set; } = 0;    
+    public string? Role { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        Role = await localStorage.GetItemAsync<string?>("access");
+    }
 }

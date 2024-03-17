@@ -4,6 +4,7 @@ using Shared.Models;
 using Shared.Helpers;
 using Shared.Models.Reports;
 using Shared.Models.Products;
+using Shared.Models.Labs;
 
 namespace Shared.Models;
 public class AppState
@@ -11,6 +12,9 @@ public class AppState
    
     public event EventHandler? OnUpdateLayout;
     public void UpdateLayout() => OnUpdateLayout?.Invoke(this, EventArgs.Empty);
+    
+    public event EventHandler<LabTestResult>? OnResultUpdate;
+    public void UpdateResult(LabTestResult result) => OnResultUpdate?.Invoke(this, result);
     public event EventHandler<bool>? RefererHandler;
     public void RefererSelected(bool value) => RefererHandler?.Invoke(this, value);
     public string? SelectedOption { get; set; }

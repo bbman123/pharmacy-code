@@ -1,0 +1,35 @@
+﻿<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="pa-2">
+    <MudTooltip Text="Back" Duration="2000" Placement="Placement.Top">
+        <MudFab Label="Back" DisableElevation="true" StartIcon="@Icons.Material.Filled.ArrowBack"
+                OnClick="@(() => nav.NavigateTo("orders"))" Color="Color.Dark" Size="Size.Small" />
+    </MudTooltip>
+    <MudText Typo="Typo.h5">Manage Order</MudText>         
+</MudStack>
+<MudGrid Spacing="1">
+    <MudItem xs="12" sm="6">
+        <MudTextField Label="Date" Format="dd/MM/yyyy" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.OrderDate" />
+    </MudItem>    
+    <MudItem xs="12" sm="6">
+        <MudTextField Label="Consultant" Variant="Variant.Outlined" ReadOnly="true" Value="Data!.ConsultedBy!.ToString()" />
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudTextField Label="Consultation Fee" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.Consultation" />
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Label="Consultation Note" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.ConsultationNote" />
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudTextField Label="Total" Format="N2" Variant="Variant.Outlined" ReadOnly="true" Value="Data!.TotalAmount" />
+    </MudItem>
+    <MudItem xs="12">
+        <OrderReferrers Data="Data!.Referers!.ToList()"/>
+    </MudItem>   
+    <MudItem xs="12">
+        <ProductLineItems Data="Data!.ProductOrders.ToList()"/>
+    </MudItem>    
+</MudGrid>
+
+@code {
+    [Parameter]
+    public Order? Data { get; set; }
+}

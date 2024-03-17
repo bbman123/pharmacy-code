@@ -1,17 +1,19 @@
 ﻿@layout AppLayout
 @page "/dashboard"
+@inject IDashboardService DashboardService
 @attribute [Authorize]
 
 <MudText Typo="Typo.h5">Dashboard</MudText>
 <AuthorizeView>
     <Authorized>
-    <MudGrid>             
+    <MudGrid Spacing="1">             
         <MudItem xs="12">
-            <TopChartsView IsLoading="@model.IsBusy" customers="@model.TotalCustomers" branch="@model.TotalBranches"
-                           employees="@model.TotalEmployees" products="@model.TotalProducts"/>
+            <TopChartsView IsLoading="@model!.IsBusy" Customers="@model.TotalCustomers" 
+                           Sales="@model.TotalSales" PharmacySales="@model.TotalPharmacySales" 
+                           LabSales="@model.TotalLabSales"/>
         </MudItem>
-        <MudItem xs="12" sm="6" md="4">
-            @* <SalesLineChartView IsLoading="@model.IsBusy" Data="@model.ServiceSales" /> *@
+        <MudItem xs="12" sm="6" md="8">
+            <SalesLineChartView IsBusy="@model!.IsBusy" Data="@model.BranchSales" />
         </MudItem>
         <MudItem xs="12" sm="6" md="4">
             @* <ServiceTopSales IsLoading="@model.IsBusy" Data="@model.ServicePieChart" /> *@
@@ -34,19 +36,19 @@
 </AuthorizeView>
 @code {
 
-    DashboardModel model = new();
+    DashboardModel? model = new();
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
     protected override async Task OnInitializedAsync()
     {
-        model.IsBusy = true;
+        model!.IsBusy = true;
         var authState = await authenticationStateTask!;
         var user = authState.User;
         if (!user.Identity!.IsAuthenticated)
         {
             nav.NavigateTo("login");
         }
-        // model = await DashboardService.GetDashboard();
-        model.IsBusy = false;
+        model = await DashboardService.GetDashboardDataAsync();
+        model!.IsBusy = false;
     }
 }

@@ -1,0 +1,22 @@
+<MudDataGrid Items="Data" Dense Outlined>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Order Items</MudText>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.Product" Title="Product" />
+        <PropertyColumn Property="x => x.Quantity" Title="Qty" />
+        <PropertyColumn Property="x => x.Cost" Title="Cost" Format="N2" />
+    </Columns>
+    <NoRecordsContent>
+        <MudText Typo="Typo.h6">Empty record</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="ProductOrderItem" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [Parameter]
+    public List<ProductOrderItem> Data { get; set; } = new();
+
+}

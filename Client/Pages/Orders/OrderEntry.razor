@@ -13,7 +13,7 @@
 @using Client.Pages.Customers
 @using Microsoft.AspNetCore.SignalR.Client
 @using Shared.Enums
-@attribute [Authorize]
+@attribute [Authorize (Roles = "Admin, Seller")]
 
 
 @if (AppState.IsBusy)
@@ -648,6 +648,7 @@ else
                     StoreId = StoreID,
                     CustomerId = customer!.Id,
                     ConsultantId = RequireConsultation ? Consultant!.Id : null,
+                    ConsultedBy = RequireConsultation ? null : null,
                     Consultation = RequireConsultation ? cart!.Consultation : 0m,
                     ConsultationNote = ConsultationNote,
                     PaymentMode = cart.PaymentMode,
@@ -669,6 +670,7 @@ else
                     ReceiptNo = LastReceiptNo.Value,
                     UserId = UserID,
                     ConsultantId = RequireConsultation ? Consultant!.Id : null,
+                    ConsultedBy = RequireConsultation ? null : null,
                     Consultation = RequireConsultation ? cart!.Consultation : 0m,
                     ConsultationNote = ConsultationNote,
                     OrderDate = DateOnly.FromDateTime(currentDateTime),

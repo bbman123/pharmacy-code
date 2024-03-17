@@ -5,7 +5,7 @@ using Shared.Models.Reports;
 
 namespace Client.Pages.Reports.Templates.Receipt
 {
-    public class ReceiptFooter(ReportFooter footer) : IComponent
+    public class FooterContent(ReportFooter footer) : IComponent
     {
         private int pictureSize = 25;
         public void Compose(IContainer container)

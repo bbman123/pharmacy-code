@@ -55,6 +55,23 @@ public class LabTestsController : ControllerBase
 		var category = await _context.LabTests.FindAsync(id);
 		return category;
 	}
+	
+    [HttpGet("servicefindings/{id}")]
+	public async Task<ActionResult<IEnumerable<LabTestResult>?>> GetServiceFindings(Guid id)
+	{
+		if (_context.LabTests == null)
+		{
+			return NotFound();
+		}
+        var results = await Task.Run(() =>
+        {
+            return _context.LabTests.Where(x => x.Id == id)
+                                             .AsEnumerable()
+                                             .SelectMany(x => x.Findings ?? Enumerable.Empty<LabTestResult>())
+                                             .ToList();
+        });
+        return results;
+	}
 
 	// PUT: api/LabTests/5
 	// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
@@ -89,7 +106,6 @@ public class LabTestsController : ControllerBase
 
 	// POST: api/LabTests
 	// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-
 	[HttpPost]
 	public async Task<ActionResult<LabTest>> PostLabTest(LabTest category)
 	{
@@ -102,6 +118,27 @@ public class LabTestsController : ControllerBase
 
 		return CreatedAtAction("GetLabTest", new { id = category.Id }, category);
 	}
+
+    [HttpPost("updatefindings/{id}")]
+    public async Task<IActionResult> UpdateFindings(Guid id, List<LabTestResult> results)
+    {
+        if (_context.LabTests == null)
+            return Problem("Entity set 'AppDbContext.LabTests'  is null.");
+
+        if (results == null)
+            return BadRequest("Cannot save empty results");
+
+        try
+        {
+            await _context.LabTests.Where(x => x.Id == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Findings, results));
+            return Ok("Findings successfully updated");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }        
+    }
 
 
 

@@ -1,0 +1,44 @@
+﻿@layout AppLayout
+@page "/manageorder/{id:guid}/{option}"
+@inject IOrderService OrderService
+
+@if (AppState.IsBusy)
+{
+    <Loader/>
+}
+else
+{
+    if (option == "Lab")
+    {
+        <LabOrderDetail Data="@LabOrder"/>
+    }
+    else
+    {
+        <PharmacyOrderDetail Data="@PharmacyOrder"/>
+    }
+}
+
+
+@code {
+    [Parameter]
+    public Guid id { get; set; }
+    [Parameter]
+    public string? option { get; set; }
+
+    Order? PharmacyOrder { get; set; }
+    LabOrder? LabOrder { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {        
+        if (option == "Pharmacy")
+        {
+            PharmacyOrder = await OrderService.GetPharmacyOrder(id);
+        }        
+        else
+        {
+            LabOrder = await OrderService.GetLabOrder(id);
+        }
+    }
+
+
+}

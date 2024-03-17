@@ -2,35 +2,35 @@
 using QuestPDF.Infrastructure;
 using Shared.Models.Reports;
 
-namespace Client.Pages.Reports.Templates.Receipt
+namespace Client.Pages.Reports.Templates.Lab
 {
     public class HeaderContent(ReportHeader header) : IComponent
     {
         private int pictureSize = 25;
         public void Compose(IContainer container)
         {
-            container.AlignCenter().Column(column =>
+            container.AlignLeft().Column(column =>
             {
                 column.Item()
-                      .AlignCenter()
+                      .AlignLeft()
                       .Width(pictureSize, Unit.Millimetre)
                       .Height(pictureSize, Unit.Millimetre)
-                      .Image(header!.Logo, ImageScaling.FitArea);
+                      .Image(header!.Logo!).FitArea();
 
                 column.Item()
-                      .AlignCenter()
+                      .AlignLeft()
                       .Text($"{header!.Store!.BranchAddress}")
-                      .FontSize(8);
+                      .FontSize(15);
 
                 column.Item()
-                      .AlignCenter()
+                      .AlignLeft()
                       .Text($"{header!.Store.PhoneNo1}")
-                      .FontSize(8);
+                      .FontSize(15);
                 
                 column.Item()
-                      .AlignCenter()
+                      .AlignLeft()
                       .Text($"{header!.Title}")
-                      .FontSize(8);
+                      .FontSize(15);
                 //column.Item().AlignCenter().Text($"Receipt {Model!.Order!.ReceiptNo.ToString().PadLeft(4, '0')}").FontSize(8);
             });
         }

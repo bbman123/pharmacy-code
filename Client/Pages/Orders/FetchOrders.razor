@@ -1,6 +1,6 @@
 ﻿@layout AppLayout
 @page "/orders"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin, Seller, Lab")]
 @inject IOrderService OrderService
 @inject IStoreService StoreService
 

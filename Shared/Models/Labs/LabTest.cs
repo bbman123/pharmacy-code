@@ -21,4 +21,6 @@ public class LabTest
     public ServiceType Type { get; set; }
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public DateTime ModifiedDate { get; set; }
+    [Column(TypeName = "jsonb")]
+    public List<LabTestResult>? Findings { get; set; } = new();
 }

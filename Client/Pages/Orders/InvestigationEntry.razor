@@ -1,0 +1,149 @@
+﻿@using Client.Handlers
+@implements IDisposable
+@inject ILabService LabService
+
+<EditForm Model="@Result" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Diagnose</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="ServiceName" Label="Service" ReadOnly Variant="Variant.Outlined" />
+                 </MudItem>
+                 <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="Result!.TestName" Label="Test Name" For="@(() => Result!.TestName)" Variant="Variant.Outlined" />
+                 </MudItem>
+@*                 @if (!string.IsNullOrEmpty(Route))
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="Result!.Result" Label="Result" For="@(() => Result!.Result)" Variant="Variant.Outlined" />
+                    </MudItem>
+                }        *@                                        
+                <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="Result!.Unit" Label="Unit" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="Result!.Range" Label="Range" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                     <Client.Pages.Labs.ListFindings id="@id" Data="@Items" IsLoading="@IsBusy" />
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Close">Close</MudButton>
+            <MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                       Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
+        </DialogActions>
+    </MudDialog>
+
+</EditForm>
+
+ @code {
+    [CascadingParameter]
+    public MudDialogInstance? DialogInstance { get; set; }
+
+    [Parameter]
+    public Guid id { get; set; }
+
+    [Parameter]
+    public string? ServiceName { get; set; }
+
+    [Parameter]
+    public string? Route { get; set; }
+
+    public LabTestResult? Result { get; set; } = new();
+    public List<LabTestResult>? Items { get; set; } = [];
+
+    [Parameter]
+    public bool IsEdit { get; set; } = false;
+
+    public bool IsBusy { get; set; } = false;
+
+    void Close() => DialogInstance?.Close(DialogResult.Ok(true));
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState!.OnUpdateLayout += ComponentUpdateOccured!;
+        if (string.IsNullOrEmpty(Route))
+            AppState!.OnResultUpdate += FindingsUpdateOccured!;
+        await GetData();
+    }
+
+    private async Task GetData()
+    {
+        IsBusy = true;
+        Items = await LabService.GetServiceFindings(id);
+        IsBusy = false;
+    }
+
+    private async Task Save()
+    {
+        AppState.IsProcessing = true;
+        var mode = await localStorage.GetItemAsync<bool>("mode");
+        var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to save", yesText: "Yes", cancelText: "No");
+        if (prompt is null)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        try
+        {
+
+            Result!.TestName = StringConverter.ConvertToTitleCase(Result!.TestName!);
+            // if (!string.IsNullOrEmpty(Route))
+            // {
+            //     if (!string.IsNullOrEmpty(Result!.Result))
+            //         Result!.Result = StringConverter.ConvertToTitleCase(Result!.Result!);
+            // }            
+            if (!string.IsNullOrEmpty(Result!.Unit))
+                Result!.Unit = StringConverter.ConvertToTitleCase(Result!.Unit!);
+            if (!string.IsNullOrEmpty(Result!.Range))
+                Result!.Range = StringConverter.ConvertToTitleCase(Result!.Range!);
+
+            Items!.Add(Result);
+            await LabService.UpdateFindings(id, Items!);
+            SnackBar.Add("Info Successfully Updated", Severity.Success);
+            AppState.UpdateLayout();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            SnackBar.Add("Operation failed", Severity.Warning);
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            IsEdit = false;
+        }
+    }
+
+    void ClearControls()
+    {
+        Result = new();
+        StateHasChanged();
+    }
+
+    private async void ComponentUpdateOccured(object sender, EventArgs e)
+    {
+        await InvokeAsync(GetData);
+        StateHasChanged();
+    }
+
+    private void FindingsUpdateOccured(object sender, LabTestResult e)
+    {
+        Result = e;
+        IsEdit = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        AppState!.OnUpdateLayout -= ComponentUpdateOccured!;
+        AppState!.OnResultUpdate -= FindingsUpdateOccured!;
+        Console.WriteLine("Component disposed");
+    }
+}

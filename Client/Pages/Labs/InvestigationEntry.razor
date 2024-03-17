@@ -1,59 +1,129 @@
-﻿@using Shared.Enums
-@implements IDisposable
+﻿@using Client.Handlers
+@inject ILabService LabService
 
-@* <EditForm Model="@Account" OnValidSubmit="Save">
+<EditForm Model="@Result" OnValidSubmit="Save">
     <DataAnnotationsValidator />
     <MudDialog>
         <TitleContent>
-            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Sub Account</MudText>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Diagnose</MudText>
         </TitleContent>
         <DialogContent>
             <MudGrid Spacing="1">
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="Account!.AccountName" Label="Account Name" ReadOnly Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                     <MudTextField @bind-Value="SubAccount!.AccountName" Label="Sub Account Name" For="@(() => SubAccount!.AccountName)" Variant="Variant.Outlined" />
-                </MudItem>
                 <MudItem xs="12">
-                     <MudTextField Lines="2" @bind-Value="SubAccount!.Description" Label="Description " For="@(() => SubAccount!.Description)" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="ServiceName" Label="Service" ReadOnly Variant="Variant.Outlined" />
+                 </MudItem>
+                 <MudItem xs="12">
+                     <MudTextField @bind-Value="Result!.TestName" Label="Test Name" For="@(() => Result!.TestName)" Variant="Variant.Outlined" />
+                 </MudItem>                        
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Result!.Result" Label="Result" For="@(() => Result!.Result)" Variant="Variant.Outlined" />
                 </MudItem>
-                <MudItem xs="12">
-                     <SubAccountList Data="@Items" IsLoading="@IsBusy" />
-                </MudItem>
-            </MudGrid>
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="Close">Close</MudButton>
-            <MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
-                       Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
-        </DialogActions>
-    </MudDialog>
+                 <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="Result!.Unit" Label="Unit" Variant="Variant.Outlined" />
+                 </MudItem>
+                 <MudItem xs="12">
+                     <MudTextField Lines="3" @bind-Value="Result!.Range" Label="Range" Variant="Variant.Outlined" />
+                 </MudItem>
+             </MudGrid>
+         </DialogContent>
+         <DialogActions>
+             <MudButton OnClick="Close">Close</MudButton>
+             <MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                        Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
+         </DialogActions>
+     </MudDialog>
 
-</EditForm> *@
+ </EditForm>
 
  @code {
     [CascadingParameter]
     public MudDialogInstance? DialogInstance { get; set; }
+
+    [Parameter]
+    public Guid TestID { get; set; }
+
+    [Parameter]
+    public Guid OrderID { get; set; }
+
+    [Parameter]
+    public string? ServiceName { get; set; }
+
+    [Parameter]
+    public int Total { get; set; }
+
+    public LabDiagnose Diagnose = new();
+
+    public LabTestResult? Result { get; set; } = new();
+
     [Parameter]
     public bool IsEdit { get; set; } = false;
-    public bool IsBusy { get; set; } = false;    
+
+    public bool IsBusy { get; set; } = false;
 
     void Close() => DialogInstance?.Close(DialogResult.Ok(true));
-
-    protected override async Task OnInitializedAsync()
-    {        
-        await GetData();
-    }
-
-    private async Task GetData()
+    Guid UserID { get; set; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        IsBusy = true;        
-        IsBusy = false;
+        UserID = await localStorage.GetItemAsync<Guid>("uid");
     }
 
-    public void Dispose()
-    {        
-        Console.WriteLine("Component disposed");
+    private async Task Save()
+    {
+        AppState.IsProcessing = true;
+        var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to save", yesText: "Yes", cancelText: "No");
+        if (prompt is null)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        try
+        {
+            if (Total <= 0)
+                Diagnose!.Id = Guid.NewGuid();
+
+            Diagnose!.LabTestId = TestID;
+            Diagnose!.LabOrderId = OrderID;
+            Diagnose!.LabScientistId = UserID;
+            Result!.TestName = StringConverter.ConvertToTitleCase(Result!.TestName!);
+            if (!string.IsNullOrEmpty(Result!.Result))
+                Result!.Result = StringConverter.ConvertToTitleCase(Result!.Result!);
+            if (!string.IsNullOrEmpty(Result!.Unit))
+                Result!.Unit = StringConverter.ConvertToTitleCase(Result!.Unit!);
+            if (!string.IsNullOrEmpty(Result!.Range))
+                Result!.Range = StringConverter.ConvertToTitleCase(Result!.Range!);
+
+            await ModifyResult();            
+            SnackBar.Add("Info Successfully Updated", Severity.Success);
+            AppState.UpdateLayout();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            SnackBar.Add("Operation failed", Severity.Warning);
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            IsEdit = false;
+        }
     }
+
+    async Task ModifyResult()
+    {
+        if (!IsEdit)
+        {
+            Diagnose!.Results.Add(Result!);
+            await LabService.AddDiagnose(Diagnose);
+        }        
+        else
+        {
+            var index = Diagnose!.Results.IndexOf(Result!);
+            await LabService.UpdateDiagnose(Diagnose!.Id, Diagnose);
+        }
+    }
+    void ClearControls()
+    {
+        Result = new();
+        StateHasChanged();
+    }    
 }

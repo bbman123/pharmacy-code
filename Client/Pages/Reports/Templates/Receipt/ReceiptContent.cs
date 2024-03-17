@@ -8,7 +8,7 @@ using Shared.Models.Reports;
 namespace Client.Pages.Reports.Templates.Receipt
 {
     
-    public class ReceiptContent(ReportData Model) : IComponent
+    public class ReportContent(ReportData Model) : IComponent
     {
         List<OrderItemDetail> Details = new();
         public void Compose(IContainer container)

@@ -1,4 +1,5 @@
 using Shared.Models.Company;
+using Shared.Models.Users;
 
 namespace Shared.Models.Reports;
 public class ReportHeader
@@ -11,4 +12,5 @@ public class ReportHeader
 public class ReportFooter
 {
     public byte[]? QR { get; set; }
+    public User? User { get; set; }
 }

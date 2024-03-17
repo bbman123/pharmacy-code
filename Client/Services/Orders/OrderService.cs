@@ -1,4 +1,5 @@
-﻿using Client.Pages.Reports.Templates.Receipt;
+﻿using Client.Pages.Reports.Templates.Lab;
+using Client.Pages.Reports.Templates.Receipt;
 using Microsoft.JSInterop;
 using Shared.Helpers;
 using Shared.Models.Labs;
@@ -14,12 +15,16 @@ public interface IOrderService
 {
     Task<bool> AddProductOrder(Order model);
     Task<bool> AddLabOrder(LabOrder model);
+    Task<bool> UpdateLabOrder(LabOrder? model);
     Task<int> GetReceiptNo(string Type, Guid StoreID);
+    Task<LabOrder?> GetLabOrder(Guid id);
+    Task<Order?> GetPharmacyOrder(Guid id);    
     Task<GridDataResponse<OrderWithData>?> GetOrderByStore(string Type, PaginationParameter parameter);
     List<LabOrderItem> LabOrderItems(Guid id, List<OrderCartRow> rows);
     List<ProductOrderItem> DrugOrderItems(Guid id, List<OrderCartRow> rows);
     ICollection<OrderReferer> GetOrderReferers(Guid id, string type, ICollection<OrderReferer> referers);
     Task GetReceipt(string Type, ReportData report);
+    Task GetLabResults(Guid id);
 }
 public class OrderService : IOrderService
 {
@@ -37,6 +42,21 @@ public class OrderService : IOrderService
         try
         {
             var request = _client.CreateClient("AppUrl").PostAsJsonAsync("api/laborders", model);
+            var response = await request;
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    
+    public async Task<bool> UpdateLabOrder(LabOrder? model)
+    {
+        try
+        {
+            var request = _client.CreateClient("AppUrl").PutAsJsonAsync($"api/laborders/{model!.Id}", model);
             var response = await request;
             return response.IsSuccessStatusCode;
         }
@@ -165,5 +185,46 @@ public class OrderService : IOrderService
                 item.OrderId = id;
         }
         return referers;
+    }
+
+    public async Task<LabOrder?> GetLabOrder(Guid id)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<LabOrder?>($"api/laborders/{id}");
+    }
+
+    public async Task<Order?> GetPharmacyOrder(Guid id)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<Order?>($"api/orders/{id}");
+    }
+
+    public async Task GetLabResults(Guid id)
+    {
+        ReportData report = new();
+        byte[]? content = null;
+        try
+        {
+
+            LabOrder? order = await GetLabOrder(id);
+            Guid OrderID = id;            
+
+            report.ReportHeader = new ReportHeader
+            {
+                Store = order!.Store,
+                Logo = await _client.CreateClient("AppUrl").GetByteArrayAsync("icon-512.png"),
+                Title = "Laboratories"
+            };
+            report.LabOrder = order;
+            report.ReportFooter = new ReportFooter();
+            report.ReportFooter.QR = new Converter().ConvertImageToByte(OrderID);
+            report.ReportFooter.User = order.Diagonses!.Select(x => x.LabScientist).FirstOrDefault(new Shared.Models.Users.User());
+            var receipt = new LabTemplate(report);
+            content = await receipt.Create();
+            if (content != null)
+                await _js.InvokeAsync<object>("exportFile", $"Lab-{Guid.NewGuid()}.pdf", Convert.ToBase64String(content));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 }

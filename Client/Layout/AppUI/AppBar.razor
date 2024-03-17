@@ -44,7 +44,6 @@
             </MudListItem>
         </MudList>
     </MudMenu>
-
     <MudMenu @ref="_menuCP" Color="Color.Inherit" Variant="Variant.Text" Class="mx-1 px-3" PopoverClass="docs-layout-menu-shadow" ListClass="d-flex px-4 pb-2 docs-appbar-special-menu" LockScroll="true" Label="Items" EndIcon="@Icons.Filled.KeyboardArrowDown" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
         <MudList Clickable="true">
             <MudListSubheader>
@@ -75,7 +74,8 @@
             </MudListItem>
         </MudList>
     </MudMenu>
-    <MudMenu @ref="_menuLabs" Color="Color.Inherit" Variant="Variant.Text" Class="mx-1 px-3" PopoverClass="docs-layout-menu-shadow" ListClass="d-flex px-4 pb-2 docs-appbar-special-menu" LockScroll="true" Label="Lab" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+    <MudButton Href="/services" Color="Color.Inherit" Class="@LayoutService.GetActiveLinkClass("services")" Variant="Variant.Text">Services</MudButton>
+@*     <MudMenu @ref="_menuLabs" Color="Color.Inherit" Variant="Variant.Text" Class="mx-1 px-3" PopoverClass="docs-layout-menu-shadow" ListClass="d-flex px-4 pb-2 docs-appbar-special-menu" LockScroll="true" Label="Lab" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
         <MudList Clickable="true">
             <MudListSubheader>
                 Lab
@@ -86,12 +86,12 @@
                 </div>
                 <MudText Typo="Typo.body2">Manage Lab Services</MudText>
             </MudListItem>
-            @* <MudListItem OnClick="@(() => Nav("orders", "labs"))">
+            <MudListItem OnClick="@(() => Nav("orders", "labs"))">
                 <div class="d-flex">
                     <MudText Color="Color.Primary">Orders</MudText>
                 </div>
                 <MudText Typo="Typo.body2">Manage Orders</MudText>
-            </MudListItem> *@
+            </MudListItem>
         </MudList>
         <MudList Clickable="true" Class="relative">
             <MudListSubheader>
@@ -105,6 +105,7 @@
             </MudListItem>
         </MudList>
     </MudMenu>
+ *@    
     <MudButton Href="/orders" Color="Color.Inherit" Class="@LayoutService.GetActiveLinkClass("orders")" Variant="Variant.Text">Orders</MudButton>
     <MudButton Href="/Stores" Color="Color.Inherit" Class="@LayoutService.GetActiveLinkClass("Stores")" Variant="Variant.Text">Stores</MudButton>
     <MudButton Href="/users" Color="Color.Inherit" Class="@LayoutService.GetActiveLinkClass("users")" Variant="Variant.Text">Users</MudButton>

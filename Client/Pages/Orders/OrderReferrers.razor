@@ -1,0 +1,27 @@
+@inject IJSRuntime js
+<MudDataGrid Items="Data" Dense Outlined>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Referrers</MudText>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.Referer!.RefererName" Title="Product" />
+        <PropertyColumn Property="x => x.Price" Title="Due" Format="N2" />
+        <PropertyColumn Property="x => x.PaymentStatus.ToString()" Title="Payment Status"/>       
+    </Columns>
+    <NoRecordsContent>
+        <MudText Typo="Typo.h6">Empty record</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="OrderReferer" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [Parameter]
+    public List<OrderReferer> Data { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await js.InvokeVoidAsync("console.log", "referrers", Data);
+    }
+}

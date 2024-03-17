@@ -35,15 +35,25 @@
                             <MudNavLink Href="/products">Products</MudNavLink>
                             <MudNavLink Href="/charges">Charges</MudNavLink>
                         </MudNavGroup>
-                        <MudNavGroup Title="Lab" ExpandIcon="@Icons.Material.Filled.ExpandMore">
-                            <MudNavLink Href="/services">Lab Services</MudNavLink>
+                        <MudNavLink Href="/services">Services</MudNavLink>
+                        @* <MudNavGroup Title="Lab" ExpandIcon="@Icons.Material.Filled.ExpandMore">                            
                             <MudNavLink Href="/diagnosis">Test Diagnosis</MudNavLink>
-                        </MudNavGroup>
+                        </MudNavGroup> *@
                         <MudNavLink Href="/orders">Orders</MudNavLink>                        
                         <MudNavLink Href="/stores">Stores</MudNavLink>                        
                         @* <MudNavLink OnClick="@(async () => await Dialog.ShowAsync<ReportDialog>(""))">Reports</MudNavLink> *@
                     </MudNavMenu>                
                 </AuthorizeView>
+                <AuthorizeView Roles="Seller">
+                    <MudNavLink Href="/dashboard">Dashboard</MudNavLink>
+                    <MudNavLink Href="/customers">Customers</MudNavLink>
+                    <MudNavLink Href="/orders">Orders</MudNavLink>
+                </AuthorizeView>
+                <AuthorizeView Roles="Seller">
+                    <MudNavLink Href="/dashboard">Dashboard</MudNavLink>                    
+                    <MudNavLink Href="/orders">Orders</MudNavLink>
+                </AuthorizeView>
+
             }
         </MudHidden>
     </MudDrawer>

@@ -1,0 +1,66 @@
+﻿@inject IJSRuntime js
+<MudDataGrid Items="@Data" Outlined>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Services</MudText>
+    </ToolBarContent>
+    <Columns>
+        <HierarchyColumn ButtonDisabledFunc="t=> !Diagnoses!.Any(x => x.LabTestId == t.ServiceId)" IconSize="Size.Small" />
+        <PropertyColumn Property="x => x.ServiceName" Title="Service" />
+        <PropertyColumn Property="x => x.Cost" Title="Cost" Format="N2" />     
+        <TemplateColumn CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" OnClick="() => OnAdd(context.Item)" Size="Size.Small">Add Result</MudButton>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <ChildRowContent>
+        <MudCard Outlined Elevation="0">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">@context.Item.ServiceName</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudDataGrid Items="Diagnoses!.Where(x => x.LabTestId == context.Item.ServiceId).SelectMany(x => x.Results)" Dense Outlined>
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">Investigations</MudText>
+                        <MudSpacer />
+                    </ToolBarContent>
+                    <Columns>
+                        <PropertyColumn Property="x => x.TestName" Title="Test Name" />
+                        <PropertyColumn Property="x => x.Result" />
+                        <PropertyColumn Property="x => x.Unit" />
+                        <PropertyColumn Property="x => x.Range" />
+                    </Columns>
+                </MudDataGrid>
+            </MudCardContent>
+        </MudCard>
+    </ChildRowContent>
+    <NoRecordsContent>
+        <MudText Typo="Typo.h6">Empty record</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="LabOrderItem" />
+    </PagerContent>
+</MudDataGrid>
+
+
+@code {
+    [Parameter]
+    public ICollection<LabOrderItem>? Data { get; set; } = new List<LabOrderItem>();
+    [Parameter]
+    public List<LabDiagnose>? Diagnoses { get; set; } = new List<LabDiagnose>();    
+
+    async Task OnAdd(LabOrderItem item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["TestID"] = item.ServiceId,
+            ["OrderID"] = item.OrderId,
+            ["Total"] = Diagnoses!.Where(x => x.LabTestId == item.ServiceId).Count(),
+            ["ServiceName"] = item.ServiceName,
+            ["IsEdit"] = false
+        };
+        await Dialog.ShowAsync<Client.Pages.Labs.InvestigationEntry>("", parameters);
+    }
+}

@@ -1,4 +1,5 @@
 ﻿using Shared.Enums;
+using Shared.Models.Users;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -19,5 +20,6 @@ namespace Shared.Models.Orders
         public PaymentStatus PaymentStatus { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime ModifiedDate { get; set; }
+        public Referer? Referer { get; set; }
     }
 }

@@ -1,0 +1,142 @@
+﻿@layout AppLayout
+@page "/lab/{id:guid}"
+@using Shared.Enums
+@inject IOrderService OrderService
+@if (AppState.IsBusy)
+{
+    <Loader />
+}
+else
+{
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="pa-2">
+         <MudTooltip Text="Back" Duration="2000" Placement="Placement.Top">
+             <MudFab Label="Back" DisableElevation="true" StartIcon="@Icons.Material.Filled.ArrowBack"
+                     OnClick="@(() => nav.NavigateTo("orders"))" Color="Color.Dark" Size="Size.Small" />
+         </MudTooltip>
+         <MudText Typo="Typo.h5">Manage Order</MudText>
+     </MudStack>
+    <MudGrid Spacing="1">
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Receipt #" Variant="Variant.Outlined" ReadOnly Value="Data!.ReceiptNo.ToString().PadLeft(4, '0')" />
+        </MudItem> 
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Date" Format="dd/MM/yyyy" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.OrderDate" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Customer Name" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.Customer!.CustomerName" />
+        </MudItem>        
+        @if (Data!.ConsultedBy is not null)
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Consultation Fee" Format="N2" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.Consultation" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Consulted By" Format="N2" Variant="Variant.Outlined" ReadOnly="true" Value="Data!.ConsultedBy!.ToString()" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Label="Consultation Note" Variant="Variant.Outlined" ReadOnly="true" @bind-Value="Data!.ConsultationNote" />
+            </MudItem>
+        }
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Total" Format="N2" Variant="Variant.Outlined" ReadOnly="true" Value="Data!.Total" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSelect T="TestStatus" Dense AnchorOrigin="Origin.BottomCenter"  Strict="true" Label="Status" Value="Data!.Status" ValueChanged="StatusChanged" Variant="Variant.Outlined">
+                @foreach (TestStatus status in Enum.GetValues(typeof(TestStatus)))
+                {
+                    <MudSelectItem Value="@status">@status</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        @if (Data!.Status == TestStatus.Completed && Data!.Diagonses!.Count > 0)
+        {
+            <MudItem xs="12" Class="d-flex align-center justify-end">
+                <MudButton Size="Size.Medium" Disabled="@AppState.IsProcessing" Variant="Variant.Outlined" OnClick="() => PrintResult()" Color="Color.Tertiary">Print Result</MudButton>
+            </MudItem>
+        }        
+        <MudItem xs="12">
+            <LabDataItems Data="Data!.Items" Diagnoses="@Data.Diagonses!.ToList()" />
+        </MudItem>
+        <MudItem xs="12">
+            <OrderReferrers Data="Data!.Referers.ToList()" />
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+
+    [Parameter]
+    public Guid id { get; set; }
+
+    public LabOrder? Data { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AppState.IsBusy = true;
+        AppState!.OnUpdateLayout += ComponentUpdateOccured!;
+        await GetData();
+        AppState.IsBusy = false;
+    }
+
+
+    async Task GetData()
+    {
+        Data = await OrderService.GetLabOrder(id);
+    }
+
+    async Task PrintResult()
+    {        
+        AppState.IsProcessing = true;
+        await OrderService.GetLabResults(Data!.Id);
+        AppState.IsProcessing = false;
+    }
+
+    async Task Save()
+    {
+        AppState.IsProcessing = true;
+        var prompt = await Dialog.ShowMessageBox("Confirmation", "Do you really wish to save", yesText: "Yes", cancelText: "No");
+        if (prompt is null)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        try
+        {
+            bool result = await OrderService.UpdateLabOrder(Data);
+            if (result)
+            {
+                SnackBar.Add("Order successfully updated", Severity.Success);
+            }
+            else
+            {
+                SnackBar.Add("An error occurred while saving", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            SnackBar.Add("An error occurred while saving", Severity.Success);
+            AppState.IsProcessing = false;
+        }
+
+    }
+
+    async Task StatusChanged(TestStatus status)
+    {
+        Data!.Status = status;
+        await Task.Delay(500);
+        await Save();
+        StateHasChanged();
+    }
+
+    private async void ComponentUpdateOccured(object sender, EventArgs e)
+    {
+        await InvokeAsync(GetData);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        AppState!.OnUpdateLayout -= ComponentUpdateOccured!;
+    }
+}

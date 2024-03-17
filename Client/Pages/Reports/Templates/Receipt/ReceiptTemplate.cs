@@ -20,9 +20,9 @@ public class ReceiptTemplate(ReportData? model)
                 {
                     page.Size(3.1486f, 5.5f, Unit.Inch);
                     page.MarginTop(0, Unit.Inch);                    
-                    page.Header().Component(new ReceiptHeader(Model!.ReportHeader!));                    
-                    page.Content().Section("Content").Component(new ReceiptContent(Model));                    
-                    page.Footer().Component(new ReceiptFooter(Model!.ReportFooter!));
+                    page.Header().Component(new HeaderContent(Model!.ReportHeader!));                    
+                    page.Content().Section("Content").Component(new ReportContent(Model));                    
+                    page.Footer().Component(new FooterContent(Model!.ReportFooter!));
 
                 });
             }).GeneratePdf();

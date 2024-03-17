@@ -50,7 +50,14 @@ public class OrdersController : ControllerBase
 		{
 			return NotFound();
 		}
-		var category = await _context.Orders.FindAsync(id);
+		var category = await _context.Orders.AsNoTracking()
+                                      .AsSplitQuery()
+                                      .Include(x => x.ProductOrders)
+                                      .Include(x => x.ConsultedBy)
+                                      .Include(x => x.User)
+                                      .Include(x => x.Store)
+                                      .Include(x => x.Referers)
+                                      .SingleOrDefaultAsync(x => x.Id == id);
 		return category;
 	}
 

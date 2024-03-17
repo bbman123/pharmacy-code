@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Bogus;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Server.Context;
@@ -53,6 +54,7 @@ public class LabOrdersController : ControllerBase
                                       .AsSplitQuery()
                                       .Include(s => s!.Customer!)
                                       .Include(s => s!.User!)
+                                      .Include(s => s!.ConsultedBy)
                                       .Include(s => s!.Store!)
                                       .Include(s => s!.Items!)
                                       .Include(s => s!.Diagonses!)

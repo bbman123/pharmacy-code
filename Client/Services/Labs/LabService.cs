@@ -17,6 +17,10 @@ public interface ILabService
     Task<LabTest[]?> GetLabTests();
     Task<LabTest[]?> GetLabTests(ServiceType type);
     Task<GridDataResponse<LabTest>?> GetPagedTests(PaginationParameter parameter);
+    Task<List<LabTestResult>?> GetServiceFindings(Guid id);
+    Task<bool> UpdateFindings(Guid id, List<LabTestResult> results);
+    Task<bool> AddDiagnose(LabDiagnose diagnose);
+    Task<bool> UpdateDiagnose(Guid id, LabDiagnose diagnose);
 }
 public class LabService : ILabService
 {
@@ -25,6 +29,21 @@ public class LabService : ILabService
     public LabService(IHttpClientFactory client)
     {
         _client = client;
+    }
+
+    public async Task<bool> AddDiagnose(LabDiagnose diagnose)
+    {
+        try
+        {
+            var request = _client.CreateClient("AppUrl").PostAsJsonAsync("api/diagnosis", diagnose);
+            var response = await request;
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
     }
 
     public async Task<bool> AddLabTest(LabTest model)
@@ -139,4 +158,46 @@ public class LabService : ILabService
 			throw;
 		}
 	}
+
+    public async Task<List<LabTestResult>?> GetServiceFindings(Guid id)
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<List<LabTestResult>?>($"api/labtests/servicefindings/{id}");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateDiagnose(Guid id, LabDiagnose diagnose)
+    {
+        try
+        {
+            var request = _client.CreateClient("AppUrl").PutAsJsonAsync($"api/diagnosis/{id}", diagnose);
+            var response = await request;
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateFindings(Guid id, List<LabTestResult> results)
+    {
+        try
+        {
+            var response = await _client.CreateClient("AppUrl").PostAsJsonAsync($"api/labtests/updatefindings/{id}", results);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
 }
