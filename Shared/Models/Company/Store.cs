@@ -21,7 +21,7 @@ namespace Shared.Models.Company
         public string? PhoneNo2 { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime ModifiedDate { get; set; }
-        public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+        public virtual ICollection<PharmacyOrder> Orders { get; set; } = new List<PharmacyOrder>();
         public virtual ICollection<LabOrder> LabOrders { get; set; } = new List<LabOrder>();
 
     }

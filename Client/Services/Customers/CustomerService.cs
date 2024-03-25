@@ -73,7 +73,7 @@ public class CustomerService : ICustomerService
     {
         try
         {
-            var request = _client.CreateClient("AppUrl").GetFromJsonAsync<Customer?>("api/customers/{id}");
+            var request = _client.CreateClient("AppUrl").GetFromJsonAsync<Customer?>($"api/customers/{id}");
             var response = await request;
             return response;
         }

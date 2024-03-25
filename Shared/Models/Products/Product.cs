@@ -14,31 +14,21 @@ namespace Shared.Models.Products;
 public class Product
 {
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; }
+    public Guid ItemId { get; set; }
     public Guid StoreId { get; set; }
-    public Guid CategoryID { get; set; }
-    [Required(ErrorMessage = "Product Name is required")]
-    public string? ProductName { get; set; }
-    public string? Description { get; set; } = "";
-    public string? Barcode { get; set; } = "";
-    [Required(ErrorMessage = "Price is required")]
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal UnitPrice { get; set; } = 0M;
     [Required(ErrorMessage = "Quantity is required")]
     [Column(TypeName = "decimal(18,2)")]
     public decimal StocksOnHand { get; set; } = 0M;
     public int ReorderLevel { get; set; }
-    public DateOnly? ManufacturedDate { get; set; }
-    public DateOnly? ExpiryDate { get; set; }
     public DateTime CreatedDate { get; set; } = DateTime.Now;
     public DateTime ModifiedDate { get; set; }
-    [ForeignKey("CategoryID")]
-    public virtual Category? Category { get; set; }
     [Column(TypeName = "jsonb")]
     public virtual List<Stock> Stocks { get; set; } = new();
-    [Column(TypeName = "jsonb")]
-    public virtual List<Stock> Returned { get; set; } = new();
+    public virtual List<ReturnedProduct> ReturnedProducts { get; set; } = new();
     [ForeignKey(nameof(StoreId))]
     public virtual Store? Store { get; set; }
+    [ForeignKey(nameof(ItemId))]
+    public virtual Item? Item { get; set; }
     public virtual ICollection<ProductOrderItem> OrderItems { get; set; } = new List<ProductOrderItem>();
 }

@@ -1,22 +1,36 @@
 ﻿@using Client.Handlers
+@using Shared.Enums
 @inject ICustomerService CustomerService
+@implements IAsyncDisposable
+
 <EditForm Model="Customer" OnValidSubmit="Save">
     <DataAnnotationsValidator />
     <MudDialog>
         <TitleContent>
-            <MudText Typo="Typo.h6">Add Customer</MudText>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Customer</MudText>
         </TitleContent>
         <DialogContent>
-            <MudGrid>
+            <MudGrid Spacing="2">
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="Customer.CustomerName" Label="Customer Name" Margin="Margin.Dense" Variant="Variant.Outlined" For="@(() => Customer.CustomerName)"></MudTextField>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="Customer.PhoneNo" Label="Phone Number" Margin="Margin.Dense" Variant="Variant.Outlined" For="@(() => Customer.PhoneNo)"></MudTextField>
-                </MudItem>                
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="Customer.ContactAddress" Lines="3" Label="Home Address" Variant="Variant.Outlined"></MudTextField>
-                </MudItem>                
+                    <MudTextField @bind-Value="Customer!.CustomerName" AutoFocus Label="Customer Name" Margin="Margin.Dense" Variant="Variant.Outlined" For="@(() => Customer.CustomerName)"></MudTextField>
+                 </MudItem>
+                 <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="Customer!.PhoneNo" Label="Phone Number" Margin="Margin.Dense" Variant="Variant.Outlined" For="@(() => Customer.PhoneNo)"></MudTextField>
+                 </MudItem>
+                 <MudItem xs="12" sm="6">
+                     <MudSelect T="Gender" Dense="true" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense" Strict="true" Label="Gender" @bind-Value="Customer.Gender" Variant="Variant.Outlined">
+                         @foreach (Gender gender in Enum.GetValues(typeof(Gender))!)
+                        {
+                            <MudSelectItem Value="@gender">@gender.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                 </MudItem>
+                 <MudItem xs="12" sm="6">
+                     <MudTextField @bind-Value="Customer!.Age" Label="Age" Margin="Margin.Dense" Variant="Variant.Outlined"></MudTextField>
+                 </MudItem>
+                 <MudItem xs="12">
+                     <MudTextField @bind-Value="Customer!.ContactAddress" Lines="3" Label="Home Address" Variant="Variant.Outlined"></MudTextField>
+                 </MudItem>
             </MudGrid>
         </DialogContent>
         <DialogActions>
@@ -27,13 +41,23 @@
     </MudDialog>
 </EditForm>
 
-@code {
+ @code {
     [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
     [Parameter] public Customer Customer { get; set; } = new();
     [Parameter] public bool IsEdit { get; set; } = false;
     [Parameter] public string? RedirectRoute { get; set; } = string.Empty;
+    private HubConnection? hub;
+    protected override async Task OnInitializedAsync()
+    {
+        hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+        {
+            option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+        }).WithStatefulReconnect().Build();
+        await hub.StartAsync();
+    }
 
     void Cancel() => MudDialog!.Close(DialogResult.Ok(true));
+
     async Task Save()
     {
         AppState.IsProcessing = true;
@@ -50,7 +74,7 @@
             return;
         }
         var exist = await CustomerService.GetCustomerByPhone(Customer.PhoneNo!);
-        if (!string.IsNullOrEmpty(exist!.PhoneNo))
+        if (!string.IsNullOrEmpty(exist!.PhoneNo) && Customer!.Id != exist.Id)
         {
             await Dialog.ShowMessageBox("Notification", $"Phone No has already regitered to {exist.CustomerName}");
             AppState.IsProcessing = false;
@@ -58,8 +82,11 @@
         }
         try
         {
-            Customer.ModifiedDate = DateTime.Now;
+            Customer.CreatedDate = AppState.CurrentDateTime;
+            Customer.ModifiedDate = AppState.CurrentDateTime;
             Customer.CustomerName = StringConverter.ConvertToTitleCase(Customer.CustomerName!);
+            Customer!.ContactAddress = string.IsNullOrEmpty(Customer!.ContactAddress) ? 
+            "" : StringConverter.ConvertToTitleCase(Customer.ContactAddress!);
             if (!IsEdit)
             {
                 Customer.Id = Guid.NewGuid();
@@ -69,7 +96,9 @@
             {
                 await CustomerService.EditCustomer(Customer);
             }
-            SnackBar.Add("Customer Successfully Saved", Severity.Success);            
+            SnackBar.Add("Customer Successfully Saved", Severity.Success);
+            await hub!.SendAsync("UpdateCustomers");
+            Cancel();
         }
         catch (Exception ex)
         {
@@ -78,11 +107,12 @@
         }
         finally
         {
-            AppState.IsProcessing = false;
-            if (!string.IsNullOrEmpty(RedirectRoute))
-                Cancel();
-            else
-                AppState.UpdateLayout();
+            AppState.IsProcessing = false;            
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await hub!.DisposeAsync();
     }
 }

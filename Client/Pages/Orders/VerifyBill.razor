@@ -1,0 +1,65 @@
+﻿@layout AppLayout
+@page "/billverification"
+@inject IOrderService OrderService
+@attribute [Authorize(Roles = "Cashier")]
+
+<center>
+    <MudText Typo="Typo.h5">Please scan the QR Code to verify receipt</MudText>
+    <MudToggleGroup T="string" Style="width: 300px;" Value="AppState.SelectedOption" ValueChanged="OptionChanged" Outline Delimiters Dense Rounded CheckMark FixedContent>
+        <MudToggleItem Value="@("Lab")" />
+        <MudToggleItem Value="@("Pharmacy")" />
+    </MudToggleGroup>
+    <MudTextField id="figure-center" @bind-Value="strReceiptNumber" Label="Receipt #" Placeholder="Enter the valid receipt number to verify" />
+    <MudTooltip Text="Pay now" Duration="1000" Placement="Placement.Top">
+        <MudFab Size="Size.Medium" Disabled="AppState.IsProcessing" Label="@(AppState.IsProcessing ? "Processing" : "Verify")" Style="width:200px;" OnClick="() => Verify()" Color="Color.Success" />
+    </MudTooltip>
+</center>
+
+
+
+@code {
+    string? strReceiptNumber { get; set; }
+
+    protected override void OnInitialized()
+    {
+        AppState.SelectedOption = string.Empty;
+    }
+
+    async Task Verify()
+    {
+        AppState.IsProcessing = true;
+        if (string.IsNullOrEmpty(strReceiptNumber))
+        {
+            SnackBar.Add("Enter valid receipt number", Severity.Error);
+            AppState.IsProcessing = false;
+            return;
+        }
+
+        try
+        {
+            int receiptNumber = int.Parse(strReceiptNumber);
+            if (AppState.SelectedOption == "Lab")
+            {
+                await OrderService.GetLabOrder(receiptNumber);
+            }
+
+            if (AppState.SelectedOption == "Pharmacy")
+            {
+                await OrderService.GetLabOrder(receiptNumber);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+        }
+    }
+
+    void OptionChanged(string option)
+    {
+        AppState.SelectedOption = option;
+    }
+}

@@ -8,7 +8,9 @@ namespace Shared.Enums;
 
 public enum UserRole
 {
+    Master,
     Admin,
     Lab,
-    Seller
+    Seller,
+    Cashier
 }

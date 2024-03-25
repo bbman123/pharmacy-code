@@ -1,7 +1,26 @@
 ﻿<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <div style="height:100%;width:100%;margin:0;position:fixed;">
+                        <div style="display:flex; justify-content: center;align-items:center;height:100%;width:100%;">
+                            <MudGrid Justify="Justify.Center">
+                                <MudItem xs="12">
+                                    <div class="d-flex justify-center align-center">
+                                        <MudText Class="text-center" Typo="Typo.h4">Not Authorized</MudText>
+                                    </div>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <div class="d-flex justify-center align-center">
+                                        <MudButton Class="mx-auto" OnClick="@(() => nav.NavigateTo("/"))">Login</MudButton>
+                                    </div>
+                                </MudItem>
+                            </MudGrid>
+                        </div>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>

@@ -9,6 +9,7 @@ namespace Shared.Enums
     public enum PaymentStatus
     {
         Unpaid,
-        Paid
+        Half,
+        Full
     }
 }

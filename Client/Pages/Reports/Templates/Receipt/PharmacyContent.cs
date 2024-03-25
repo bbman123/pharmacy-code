@@ -4,7 +4,7 @@ using Shared.Models.Orders;
 
 namespace Client.Pages.Reports.Templates.Receipt
 {
-    public class PharmacyContent(Order Order) : IComponent
+    public class PharmacyContent(PharmacyOrder Order) : IComponent
     {
         public void Compose(IContainer container)
         {

@@ -9,6 +9,7 @@
 @inject IRefererService RefererService
 @inject IUserService UserService
 @inject IChargeService ChargeService
+@implements IAsyncDisposable
 
 @using Client.Pages.Customers
 @using Microsoft.AspNetCore.SignalR.Client
@@ -18,7 +19,7 @@
 
 @if (AppState.IsBusy)
 {
-    <Loader />
+    <LoaderSkeleton />
 }
 else
 {
@@ -35,7 +36,7 @@ else
                      </MudToggleGroup>
                  </MudItem>
                  <MudItem xs="12" sm="6" Class="d-flex align-end justify-end">
-                     @if (SelectedOption == "Lab")
+                     @if (!string.IsNullOrEmpty(SelectedOption))
                      {                     
                         <MudTooltip Text="Add Customer" Duration="2000" Placement="Placement.Top">
                             <MudFab Label="New Customer" DisableElevation="true" StartIcon="@Icons.Material.Filled.Add" OnClick="() => NewCustomer()" Color="Color.Primary" Size="Size.Small" />
@@ -79,9 +80,9 @@ else
                 @if (SelectedOption == "Pharmacy")
                 {
                     <MudItem xs="12" sm="6">
-                        <MudAutocomplete @ref="_Products" T="Product" AnchorOrigin="Origin.BottomCenter" Value="Row.Product" Label="Products" ValueChanged="ProductChanged"
-                                         SearchFunc="@SearchProducts" Dense="true" Variant="Variant.Outlined" ShowProgressIndicator="true"
-                                         ToStringFunc="@(e => e==null ? null : $"{e.ProductName}")" Margin="Margin.Dense" />
+                        <MudAutocomplete @ref="_Products" T="Product" AnchorOrigin="Origin.BottomCenter" Value="Row.Product" Label="Search for Products" ValueChanged="ProductChanged"
+                                         SearchFunc="@SearchProducts" Dense="true" Variant="Variant.Outlined" ShowProgressIndicator="true" HelperText="Search by name or scan barcode"
+                                         ToStringFunc="@(e => e==null ? null : $"{e!.Item!.ProductName}")" Margin="Margin.Dense" />
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudNumericField T="decimal" Value="@Row.Quantity" Immediate="false" ValueChanged="ProductQuantityChanged" Label="Quantity" Min="1" Max="Row!.Product!.StocksOnHand" Variant="Variant.Outlined" Margin="Margin.Dense" />
@@ -155,6 +156,11 @@ else
                          <PropertyColumn Property="x => x.Quantity" Title="Qty" />
                          <PropertyColumn Property="x => x.Cost" Title="Cost" Format="N2" />
                          <PropertyColumn Property="x => x.Total" Title="Total" Format="N2" />
+                         <TemplateColumn Title="Action">
+                             <CellTemplate>
+                                 <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete" OnClick="() => DeleteItem(context.Item)"/>
+                             </CellTemplate>
+                         </TemplateColumn>
                      </Columns>
                      <NoRecordsContent>
                          <MudText Typo="Typo.h6">Cart Empty</MudText>
@@ -165,10 +171,6 @@ else
 
              </MudItem>
              <MudItem xs="12" sm="6" Class="d-flex flex-column justify-end gap-2">                 
-
-                 @* <MudTextField id="figure-right" Label="Amount Due" Disabled="true" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense"
-                               Value="@cart.AmountDue" Format="N2" /> *@
-
                  @if (RequireConsultation)
                  {
                      <MudTextField id="figure-right" Format="N2" Disabled="true" Label="Consultation" @bind-Value="cart.Consultation" Margin="Margin.Dense"
@@ -179,8 +181,20 @@ else
                                Variant="Variant.Outlined" Disabled="true" Format="N2"
                                ReadOnly="true" />
 
-                 @* <MudTextField id="figure-right" Format="N2" Disabled="true" ReadOnly="true" Margin="Margin.Dense" Label="Balance" Value="@(cart.AmountDue - cart.AmountPaid)"
-                               Variant="Variant.Outlined" /> *@
+                @if (SelectedOption == "Pharmacy" && !string.IsNullOrEmpty(customer!.CustomerName))
+                {
+                    <MudTextField id="figure-right" Label="Discount" @bind-Value="cart.Discount" Format="N2" Margin="Margin.Dense"
+                                Variant="Variant.Outlined" Immediate="false" />
+                }
+
+                <MudTextField id="figure-right" Label="Amount Due" Disabled="true" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense"
+                                Value="@(cart.Discount > 0 ? cart.AmountDue = (cart.GrandTotal - cart.Discount) : cart.AmountDue = cart.GrandTotal)" Format="N2" />
+
+                <MudTextField id="figure-right" Format="N2" Label="Amount Paid" @bind-Value="cart.AmountPaid" Margin="Margin.Dense"
+                                Variant="Variant.Outlined" />
+
+                <MudTextField id="figure-right" Format="N2" Disabled="true" ReadOnly="true" Margin="Margin.Dense" Label="Balance" Value="@(cart.AmountDue - cart.AmountPaid)"
+                                Variant="Variant.Outlined" />
 
                  <MudSelect Strict="true" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense"
                             @bind-Value="cart.PaymentMode" Label="Payment Mode">
@@ -195,8 +209,8 @@ else
                  </MudTooltip>
              </MudItem>
              <MudItem xs="12" sm="6" Class="d-flex align-center justify-center">
-                 <MudTooltip Text="Save" Duration="1000" Placement="Placement.Top">
-                     <MudFab Size="Size.Medium" Disabled="AppState.IsProcessing" Label="@(AppState.IsProcessing ? "Processing" : "Save")" Style="width:200px;" OnClick="() => CheckOut()" Color="Color.Success" />
+                 <MudTooltip Text="Pay now" Duration="1000" Placement="Placement.Top">
+                     <MudFab Size="Size.Medium" Disabled="AppState.IsProcessing" Label="@(AppState.IsProcessing ? "Processing" : "Pay now")" Style="width:200px;" OnClick="() => CheckOut()" Color="Color.Success" />
                  </MudTooltip>
              </MudItem>
          </MudGrid>
@@ -234,13 +248,19 @@ else
     private List<OrderCartRow>? Rows { get; set; } = new();
     private Guid StoreID, UserID;
     private int? LastReceiptNo;
-    private Store? Store; private Store[]? branches = new Store[0];
+    private Store? Store; private Store[]? branches = [];
 
     private HubConnection? hub;
     protected override async Task OnInitializedAsync()
     {
         AppState.IsBusy = true;
-        hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs")).WithAutomaticReconnect().Build();
+        var builder = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+        {
+            option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+        }).WithStatefulReconnect();
+        builder.Services.Configure<HubConnectionOptions>(o => o.StatefulReconnectBufferSize = 1000);
+        hub = builder.Build();
+        await hub.StartAsync();        
         services = await TestService.GetLabTests(ServiceType.Consultation);
         charges = await ChargeService.GetCharges();
         UserID = await localStorage.GetItemAsync<Guid>("uid");
@@ -485,7 +505,8 @@ else
             if (string.IsNullOrEmpty(value))
                 return Products;
 
-            return Products!.Where(x => x.ProductName!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+            return Products!.Where(x => x.Item!.ProductName!.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+            || x.Item!.Barcode!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
         }
         catch (System.Exception ex)
         {
@@ -569,7 +590,14 @@ else
             nav.NavigateTo("/orders");
         }
     }
-
+    void DeleteItem(OrderCartRow row)
+    {
+        if (!Rows.Any())
+            SnackBar.Add("Nothing to delete in cart", Severity.Warning);
+        else
+            Rows.Remove(row);
+        StateHasChanged();
+    }
     async Task CheckOut()
     {
         AppState.IsProcessing = true;
@@ -579,14 +607,14 @@ else
             SnackBar.Add("Select Customer to proceed", Severity.Warning);
             return;
         }
-        
+
         if (IsReferedByDoctor && string.IsNullOrEmpty(Doctor!.RefererName))
         {
             AppState.IsProcessing = false;
             SnackBar.Add("Select Doctor to proceed", Severity.Warning);
             return;
         }
-        
+
         if (IsReferedByEscort && string.IsNullOrEmpty(Escort!.RefererName))
         {
             AppState.IsProcessing = false;
@@ -631,7 +659,7 @@ else
         }
         Console.WriteLine("Confirmed");
         LabOrder? labOrder = null;
-        Order? order = null;
+        PharmacyOrder? order = null;
         bool success = false;
         try
         {
@@ -664,11 +692,12 @@ else
             }
             else
             {                             
-                order = new Order()
+                order = new PharmacyOrder()
                 {
                     Id = OrderID,
                     ReceiptNo = LastReceiptNo.Value,
                     UserId = UserID,
+                    CustomerId = string.IsNullOrEmpty(customer!.CustomerName) ? null : customer!.Id,
                     ConsultantId = RequireConsultation ? Consultant!.Id : null,
                     ConsultedBy = RequireConsultation ? null : null,
                     Consultation = RequireConsultation ? cart!.Consultation : 0m,
@@ -677,6 +706,7 @@ else
                     StoreId = StoreID,
                     ProductOrders = OrderService.DrugOrderItems(OrderID, Rows!)!,
                     Referers = OrderService.GetOrderReferers(OrderID, SelectedOption!, this.OrderReferers),
+                    Payments = new List<Payment>() { new Payment { PaymentDate = currentDateTime, PaymentMode = cart.PaymentMode, Amount = cart.AmountPaid, CreatedDate = currentDateTime}},
                     CreatedDate = currentDateTime,
                     ModifiedDate = currentDateTime
                 };
@@ -695,16 +725,16 @@ else
                 {
                     AppState!.ReportDataModel.LabOrder = labOrder;
                     AppState!.ReportDataModel.Customer = customer;
+                    await hub!.SendAsync("UpdateLabOrders");
                 }
                 else
                 {
                     AppState!.ReportDataModel.Order = order;
                     var items = order!.ProductOrders.ToArray();
-                    if (hub!.State == HubConnectionState.Disconnected)
-                        await hub!.StartAsync();
                     await hub!.SendAsync("UpdateProductQuantity", items);
+                    await hub!.SendAsync("UpdatePharmarcyOrders");
                 }                    
-                await OrderService.GetReceipt(SelectedOption!, AppState!.ReportDataModel);
+                await OrderService.GetBillQrCode(OrderID, SelectedOption);
                 SnackBar.Add("Transaction Successfull", Severity.Success);                
                 ClearOrderItem();
             }
@@ -788,5 +818,11 @@ else
         cart.RowsCount = Rows!.Count;
         cart.GrandTotal = Rows!.Sum(x => x.Total) + cart!.Consultation;
         StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await hub!.StopAsync();
+        await hub!.DisposeAsync();
     }
 }

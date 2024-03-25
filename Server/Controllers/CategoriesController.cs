@@ -25,13 +25,11 @@ namespace Server.Controllers
 		[HttpPost("paged")]
 		public async Task<ActionResult<GridDataResponse<Category>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
 		{
-			IQueryable<Category> query;
-			Category[] data = new Category[0];
-			data = await _context.Categories.AsNoTracking().ToArrayAsync(cancellationToken);
-			query = string.IsNullOrEmpty(parameter.SearchTerm) == true ? data.AsQueryable() : data.Where(x => x.ToString()!.Contains(parameter!.SearchTerm!, StringComparison.InvariantCultureIgnoreCase)).AsQueryable();
-			var pagedResult = Paginate(query, parameter);
-			return Ok(pagedResult);
-		}
+            GridDataResponse<Category> response = new();
+            response!.Data = await _context.Categories.AsNoTracking().OrderByDescending(x => x.ModifiedDate).Skip(parameter.Page).Take(parameter.PageSize).ToListAsync();
+            response!.TotalCount = await _context.Categories.CountAsync();
+            return response!;
+        }
 
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
@@ -97,7 +95,17 @@ namespace Server.Controllers
 			return CreatedAtAction("GetCategory", new { id = category.Id }, category);
 		}
 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var record = await _context.Categories.FindAsync(id);
+            if (record is null)
+                return NotFound();
 
+            _context.Categories.Remove(record);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
 
 		public static GridDataResponse<Category> Paginate(IQueryable<Category> source, PaginationParameter parameters)
 		{

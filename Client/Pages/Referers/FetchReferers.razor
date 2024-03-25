@@ -1,5 +1,6 @@
 ﻿@layout AppLayout
 @inject IRefererService RefererService
+@implements IAsyncDisposable
 @page "/referers"
 @using Shared.Enums
 @attribute [Authorize]
@@ -24,7 +25,13 @@
 		</MudStack>
 	</MudHidden>
 
-	<MudDataGrid @ref="_gridComponent"
+@if (AppState.IsBusy)
+{
+	<DataGridSkeleton/>
+}
+else
+{
+		<MudDataGrid @ref="_gridComponent"
 				 T="Referer"
 				 ServerData="GetGridData"
 				 RowClick="@HandleSelectedDataItemChanged"
@@ -32,22 +39,24 @@
 			 Outlined>
 	<Columns>
 		<PropertyColumn Title="Name" Property="x => x.RefererName" />
+		<PropertyColumn Title="Contact No" Property="x => x.PhoneNo" />
 		<TemplateColumn Title="Type">
 			<CellTemplate>
 				@if (context.Item.Type == RefererType.Doctor)
 				{
-					<MudChip Size="Size.Small" Color="Color.Surface">Doctor</MudChip>
+					<MudChip Size="Size.Small" Color="Color.Primary">Doctor</MudChip>
 				}
 				else
 				{
-					<MudChip Size="Size.Small" Color="Color.Tertiary">Escort</MudChip>
+					<MudChip Size="Size.Small" Color="Color.Warning">Escort</MudChip>
 				}
 			</CellTemplate>
 		</TemplateColumn>
+		<PropertyColumn Title="Total Referrals" Property="x => x.OrderReferers.Count" />
 		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()" />
-		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
 		<TemplateColumn>
 			<CellTemplate>
+					<MudButton StartIcon="@Icons.Material.Filled.PersonSearch" Color="Color.Info" OnClick="() => OnViewClicked(context.Item.Id)" Size="Size.Small">View</MudButton>
 				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
 				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
 			</CellTemplate>
@@ -60,7 +69,8 @@
 		<MudDataGridPager T="Referer" />
 	</PagerContent>
 </MudDataGrid>
-
+	
+}
 
 
 
@@ -69,27 +79,63 @@
 	private Referer? category = new();
 	private EditContext? EditContext;
 
-	protected override void OnInitialized()
+	private HubConnection? hub;
+	protected override async Task OnInitializedAsync()
 	{
-		AppState.OnUpdateLayout += UpdateComponent!;
+		AppState.IsBusy = true;
+		var builder = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+		{
+			option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+		}).WithStatefulReconnect();
+		builder.Services.Configure<HubConnectionOptions>(o => o.StatefulReconnectBufferSize = 1000);
+		hub = builder.Build();
+		await hub.StartAsync();
+		hub.On("UpdateReferrers", async () =>
+		{
+			await _gridComponent!.ReloadServerData();
+		});
+
 		EditContext = new EditContext(category!);
-		base.OnInitialized();
 	}
 
-	private async Task<GridData<Referer>> GetGridData(GridState<Referer> request)
+	protected override void OnAfterRender(bool firstRender)
 	{
-		var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
-		var response = await RefererService.GetPagedReferers(parameter);
-		return new GridData<Referer>()
-			{
-				Items = response!.Data!,
-				TotalItems = response.TotalCount
-			};
+		if (firstRender)
+		{
+			AppState.IsBusy = false;
+		}
+	}
+	private async Task<GridData<Referer>> GetGridData(GridState<Referer> request)
+	{		
+		try
+		{
+			var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
+			var response = await RefererService.GetPagedReferers(parameter);
+			return new GridData<Referer>()
+				{
+					Items = response!.Data!,
+					TotalItems = response.TotalCount
+				};
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex);
+			return new GridData<Referer>();
+		}
+		finally
+		{
+			AppState!.IsBusy = false;
+		}		
 	}
 
 	async Task HandleSelectedDataItemChanged(DataGridRowClickEventArgs<Referer> category)
 	{
 		await OnEdit(category.Item);
+	}
+
+	void OnViewClicked(Guid id)
+	{
+		nav.NavigateTo($"referrer/{id}");
 	}
 
 	private async Task OnNew()
@@ -127,7 +173,8 @@
 		{
 			await RefererService.DeleteReferer(id);
 			SnackBar.Add("Referer Successfully Deleted", Severity.Success);
-			AppState.UpdateLayout();
+			await hub!.SendAsync("UpdateReferrers");
+			// AppState.UpdateLayout();
 		}
 		catch (Exception ex)
 		{
@@ -160,9 +207,10 @@
 		StateHasChanged();
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
-		AppState.OnUpdateLayout -= UpdateComponent!;
+		//AppState.OnUpdateLayout -= UpdateComponent!;
+		await hub!.DisposeAsync();
 	}
 
 }

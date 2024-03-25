@@ -10,16 +10,11 @@ namespace Server.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class DiagnosisController : ControllerBase
+public class DiagnosisController(AppDbContext context, ILogger<DiagnosisController> logger) : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly ILogger<DiagnosisController> _logger;
+    private readonly AppDbContext _context = context;
+    private readonly ILogger<DiagnosisController> _logger = logger;
 
-    public DiagnosisController(AppDbContext context, ILogger<DiagnosisController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
     [HttpPost("paged")]
     public async Task<ActionResult<GridDataResponse<LabDiagnose>>> PagedDiagnosis(PaginationParameter parameter, CancellationToken cancellationToken)
     {
@@ -118,7 +113,17 @@ public class DiagnosisController : ControllerBase
         return CreatedAtAction("GetDiagnose", new { id = diagonse.Id }, diagonse);
     }
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.LabDiagonses.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.LabDiagonses.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
     public static GridDataResponse<LabDiagnose> Paginate(IQueryable<LabDiagnose> source, PaginationParameter parameters)
     {

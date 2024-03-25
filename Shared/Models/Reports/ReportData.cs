@@ -13,7 +13,7 @@ public class ReportData
     public User? Employee { get; set; }
     public Store? Branch { get; set; }
     public Customer? Customer { get; set; }
-    public Order? Order {get; set; }    
+    public PharmacyOrder? Order {get; set; }    
     public LabOrder? LabOrder {get; set; }    
     public List<OrderCartRow>? Rows {get; set; }
     public string? PrevPage { get; set; }

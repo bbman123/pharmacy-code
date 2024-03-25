@@ -15,12 +15,12 @@ public class OrderCartRow
     [Column(TypeName = "decimal(18,2)")]
     public decimal Quantity { get; set; } = 0;
     [Column(TypeName = "decimal(18, 2)")]
-    public decimal Cost => SelectedOption == "Lab" ? Service!.Rate : Product!.UnitPrice;
+    public decimal Cost => SelectedOption == "Lab" ? Service!.Rate : Product!.Item!.UnitPrice;
     [Column(TypeName = "decimal(18, 2)")]
     public decimal Total => Quantity * Cost;
     public Product? Product { get; set; } = new();
     public LabTest? Service { get; set; } = new();
-    public string? ItemName => SelectedOption == "Lab" ? Service!.TestName : Product!.ProductName;
+    public string? ItemName => SelectedOption == "Lab" ? Service!.TestName : Product!.Item!.ProductName;
     public string? SearchByBarcode { get; set; }
     public string? SelectedOption { get; set; }
     public DateTime? DeliveryDate { get; set; }

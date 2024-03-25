@@ -1,5 +1,6 @@
 ﻿@using Client.Handlers
 @inject IProductService ProductService
+@implements IAsyncDisposable
 
 <EditForm Model="@Data" OnValidSubmit="Save">
 	<DataAnnotationsValidator/>
@@ -29,6 +30,16 @@
 
 	MudTextField<string?>? _TxtName { get; set; }
 
+	private HubConnection? hub;
+	protected override async Task OnInitializedAsync()
+	{
+		hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+		{
+			option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+		}).WithStatefulReconnect().Build();
+		await hub.StartAsync();
+	}
+
 	void Close() => DialogInstance?.Close(DialogResult.Ok(true));
 
 	private async Task Save()
@@ -52,7 +63,7 @@
 				await ProductService.EditCategory(Data!);
 			SnackBar.Add("Category Successfully Updated", Severity.Success);
 			AppState.UpdateLayout();
-			await ClearControls();
+			await hub!.SendAsync("UpdateCategories");
 		}
 		catch (Exception)
 		{
@@ -70,6 +81,9 @@
 		Data.Description = "";
 		await _TxtName!.FocusAsync();
 	}
-
+	public async ValueTask DisposeAsync()
+	{		
+		await hub!.DisposeAsync();
+	}
 
 }

@@ -9,7 +9,7 @@ using Shared.Models.Labs;
 namespace Shared.Models;
 public class AppState
 {
-   
+    public DateTime CurrentDateTime { get; set; } = DateTime.Now;
     public event EventHandler? OnUpdateLayout;
     public void UpdateLayout() => OnUpdateLayout?.Invoke(this, EventArgs.Empty);
     
@@ -18,6 +18,7 @@ public class AppState
     public event EventHandler<bool>? RefererHandler;
     public void RefererSelected(bool value) => RefererHandler?.Invoke(this, value);
     public string? SelectedOption { get; set; }
+    public string? Token { get; set; }
     public Guid GlobalID { get; set; }
     public bool IsProcessing { get; set; }
     public bool IsBusy { get; set; }

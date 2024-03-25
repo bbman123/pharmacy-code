@@ -2,6 +2,8 @@
 @page "/lab/{id:guid}"
 @using Shared.Enums
 @inject IOrderService OrderService
+@implements IAsyncDisposable
+
 @if (AppState.IsBusy)
 {
     <Loader />
@@ -70,8 +72,14 @@ else
 
     public LabOrder? Data { get; set; } = new();
 
-    protected override async Task OnParametersSetAsync()
+    private HubConnection? hub;
+    protected override async Task OnInitializedAsync()
     {
+        hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+        {
+            option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+        }).WithStatefulReconnect().Build();
+        await hub.StartAsync();   
         AppState.IsBusy = true;
         AppState!.OnUpdateLayout += ComponentUpdateOccured!;
         await GetData();
@@ -106,6 +114,7 @@ else
             if (result)
             {
                 SnackBar.Add("Order successfully updated", Severity.Success);
+                await hub!.SendAsync("UpdateLabOrders");
             }
             else
             {
@@ -135,8 +144,9 @@ else
         StateHasChanged();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         AppState!.OnUpdateLayout -= ComponentUpdateOccured!;
+        await hub!.DisposeAsync();
     }
 }

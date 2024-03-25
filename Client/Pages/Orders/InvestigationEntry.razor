@@ -94,11 +94,6 @@
         {
 
             Result!.TestName = StringConverter.ConvertToTitleCase(Result!.TestName!);
-            // if (!string.IsNullOrEmpty(Route))
-            // {
-            //     if (!string.IsNullOrEmpty(Result!.Result))
-            //         Result!.Result = StringConverter.ConvertToTitleCase(Result!.Result!);
-            // }            
             if (!string.IsNullOrEmpty(Result!.Unit))
                 Result!.Unit = StringConverter.ConvertToTitleCase(Result!.Unit!);
             if (!string.IsNullOrEmpty(Result!.Range))

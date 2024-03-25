@@ -6,13 +6,14 @@ namespace Client.Layout.AppUI;
 
 public partial class AppLayout : LayoutComponentBase
 {
-    [Inject] private LayoutService LayoutService { get; set; }
-    [Inject] private NavigationManager NavigationManager { get; set; }
+    [Inject] private LayoutService? LayoutService { get; set; }
+    [Inject] private NavigationManager? NavigationManager { get; set; }
     private bool _drawerOpen = false;
     private bool _topMenuOpen = false;
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        LayoutService.SetBaseTheme(Theme.LandingPageTheme());
+        LayoutService?.SetBaseTheme(Theme.LandingPageTheme());
+        AppState.Token = await localStorage.GetItemAsync<string>("token");
     }
 
     protected override void OnAfterRender(bool firstRender)

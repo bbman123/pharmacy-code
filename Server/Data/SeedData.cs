@@ -1,4 +1,5 @@
 ﻿using Bogus;
+using Bogus.DataSets;
 using Server.Context;
 using Shared.Enums;
 using Shared.Helpers;
@@ -34,8 +35,12 @@ public class SeedData
     {
         try
         {
-            var bogus = new Faker<Customer>().RuleFor(p => p.CustomerName, f => f.Person.FullName).RuleFor(p => p.PhoneNo,
-                f => f.Person.Phone.Substring(0, 11)).RuleFor(p => p.ContactAddress, f => f.Person.Address.ToString()).RuleFor(p => p.CreatedDate, f => f.Date.Recent());
+            var bogus = new Faker<Customer>()
+                                .RuleFor(g => g.Gender, f => f.PickRandom<Gender>())
+                                .RuleFor(p => p.CustomerName, (f, c) => f.Name.FullName((Name.Gender?)c.Gender))                                
+                                .RuleFor(p => p.PhoneNo, f => f.Person.Phone.Substring(0, 11))
+                                .RuleFor(p => p.ContactAddress, f => f.Person.Address.ToString())
+                                .RuleFor(p => p.CreatedDate, f => f.Date.Recent());
             var customers = bogus.Generate(50);
             db.Customers.AddRange(customers);
             db.SaveChanges();
@@ -87,19 +92,38 @@ public class SeedData
                 ModifiedDate = Now
             }
         };
+        var items = new List<Item>()
+        {
+            new Item
+            {
+                Id = Guid.NewGuid(),
+                ProductName = "Tetracycline",
+                CategoryID = antibiotics,
+                UnitPrice = 1000,
+                ExpiryDate = DateOnly.FromDateTime(Now),
+                CreatedDate = Now,
+                ModifiedDate = Now,                
+            },
+            new Item
+            {
+                Id = Guid.NewGuid(),
+                ProductName = "Amoxicilin",                
+                CategoryID = antibiotics,
+                UnitPrice = 1500,
+                ExpiryDate = DateOnly.FromDateTime(Now),
+                CreatedDate = Now,
+                ModifiedDate = Now,                
+            }
+        };
         var products = new List<Product>()
         {
             new Product
             {
                 Id = Guid.NewGuid(),
-                ProductName = "Tetracycline",
-                StoreId = StoreID,
-                CategoryID = antibiotics,
-                StocksOnHand = 10000,
-                UnitPrice = 10,
-                ReorderLevel = 100,
-                ManufacturedDate = DateOnly.FromDateTime(Now),
-                ExpiryDate = DateOnly.FromDateTime(Now),
+                ItemId = items!.FirstOrDefault(x => x!.ProductName == "Amoxicilin")!.Id,
+                StoreId = StoreID,                
+                StocksOnHand = 10000,                
+                ReorderLevel = 100,                                
                 CreatedDate = Now,
                 ModifiedDate = Now,
                 Stocks = new List<Stock>()
@@ -114,14 +138,10 @@ public class SeedData
             new Product
             {
                 Id = Guid.NewGuid(),
-                ProductName = "Amoxicilin",
-                StoreId = StoreID,
-                CategoryID = antibiotics,
-                StocksOnHand = 15000,
-                UnitPrice = 15,
-                ReorderLevel = 100,
-                ManufacturedDate = DateOnly.FromDateTime(Now),
-                ExpiryDate = DateOnly.FromDateTime(Now),
+                ItemId = items!.FirstOrDefault(x => x!.ProductName == "Tetracycline")!.Id,
+                StoreId = StoreID,                
+                StocksOnHand = 15000,                
+                ReorderLevel = 100,                               
                 CreatedDate = Now,
                 ModifiedDate = Now,
                 Stocks = new List<Stock>()
@@ -135,6 +155,7 @@ public class SeedData
             }
         };
         db.Categories.AddRange(categories);
+        db.Items.AddRange(items);
         db.Products.AddRange(products);
         db.SaveChanges();
 
@@ -196,7 +217,7 @@ public class SeedData
                 LastName = "Administrator",
                 Username = "admin",
                 HashedPassword = Security.Encrypt("admin123"),
-                Role = UserRole.Admin,
+                Role = UserRole.Master,
                 IsActive = true,
                 IsNew = false,
                 CreatedDate = DateTime.Now,
@@ -229,6 +250,20 @@ public class SeedData
                 IsNew = false,
                 CreatedDate = DateTime.Now,
                 ModifiedDate = DateTime.Now,
+            },
+            new User
+            {
+                Id = Guid.NewGuid(),
+                StoreId = StoreID,
+                FirstName = "Store",
+                LastName = "Cashier",
+                Username = "cashier",
+                HashedPassword = Security.Encrypt("12345678"),
+                Role = UserRole.Cashier,
+                IsActive = true,
+                IsNew = false,
+                CreatedDate = DateTime.Now,
+                ModifiedDate = DateTime.Now,
             }
         };
         var referers = new List<Referer>()
@@ -237,6 +272,7 @@ public class SeedData
             {
                 Id = Guid.NewGuid(),
                 RefererName = "Escort",
+                PhoneNo = "08012345678",
                 Type = RefererType.Escort,
                 CreatedDate = Now,
                 ModifiedDate = Now
@@ -245,6 +281,7 @@ public class SeedData
             {
                 Id = Guid.NewGuid(),
                 RefererName = "Doctor",
+                PhoneNo = "08012345678",
                 Type = RefererType.Doctor,
                 CreatedDate = Now,
                 ModifiedDate = Now

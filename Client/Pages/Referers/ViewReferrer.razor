@@ -1,0 +1,56 @@
+﻿@layout AppLayout
+@page "/referrer/{id:guid}"
+@using Client.Pages.Orders
+@inject IRefererService Service
+@attribute [Authorize]
+
+<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="pa-2">
+     <MudTooltip Text="Back" Duration="2000" Placement="Placement.Top">
+         <MudFab Label="Back" DisableElevation="true" StartIcon="@Icons.Material.Filled.ArrowBack"
+                 OnClick="@(() => nav.NavigateTo("referers"))" Color="Color.Dark" Size="Size.Small" />
+     </MudTooltip>
+     <MudText Typo="Typo.h5">Referrer Details</MudText>
+ </MudStack>
+@if (AppState.IsBusy)
+{
+    <LoaderSkeleton/>
+}
+else
+{
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="Referer!.RefererName" ReadOnly Label="Referer Name"  Variant="Variant.Outlined"></MudTextField>
+         </MudItem>
+        <MudItem xs="12" sm="6">
+             <MudTextField @bind-Value="Referer!.Type" Label="Type" ReadOnly  Variant="Variant.Outlined"></MudTextField>
+         </MudItem>
+         <MudItem xs="12" sm="6">
+             <MudTextField @bind-Value="Referer!.PhoneNo" Label="Phone Number" ReadOnly  Variant="Variant.Outlined"></MudTextField>
+         </MudItem>                  
+         <MudItem xs="12">
+             <MudTextField @bind-Value="Referer!.ContactAddress" ReadOnly Lines="3" Label="Home Address" Variant="Variant.Outlined"></MudTextField>
+         </MudItem>
+         <MudItem xs="12" sm="6">
+             <MudTextField id="figure-right" ReadOnly Value="Referer!.OrderReferers.Where(x => x.PaymentStatus == Shared.Enums.PaymentStatus.Full).Sum(x => x.Price)"  Label="Total Paid"  Variant="Variant.Outlined"></MudTextField>
+         </MudItem>
+         <MudItem xs="12" sm="6">
+             <MudTextField id="figure-right" ReadOnly Value="Referer!.OrderReferers.Where(x => x.PaymentStatus == Shared.Enums.PaymentStatus.Unpaid).Sum(x => x.Price)" Label="Total UnPaid"  Variant="Variant.Outlined"></MudTextField>
+         </MudItem>
+         <MudItem xs="12">
+             <ReferralList Data="Referer!.OrderReferers.OrderByDescending(d => d.ModifiedDate).Take(30).ToArray()"/>
+         </MudItem>          
+     </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid id { get; set; }
+    public Referer? Referer { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.IsBusy = true;
+        Referer = await Service.GetReferer(id);
+        AppState.IsBusy = false;
+    }
+
+}

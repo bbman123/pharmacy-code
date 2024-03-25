@@ -1,0 +1,153 @@
+﻿@using Client.Handlers
+@inject IProductService ProductService
+@implements IAsyncDisposable
+
+<EditForm Model="Item" OnValidSubmit="Save" Context="ftx">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Product</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Item!.ProductName" Label="Item Name" Variant="Variant.Outlined"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Item!.Barcode" Label="Barcode" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.QrCodeScanner"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Item!.Description" Label="Description" Variant="Variant.Outlined"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudAutocomplete T="Category" AnchorOrigin="Origin.BottomCenter" Value="Item!.Category" Label="Category" ShowProgressIndicator="true"
+                                     SearchFunc="@SearchCategory" Dense="true" Variant="Variant.Outlined" ValueChanged="CategoryChanged" ProgressIndicatorColor="Color.Primary"
+                                     ToStringFunc="@(e => e==null ? null : $"{e.CategoryName}")" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Item!.UnitPrice" Format="N2" Label="Price" Variant="Variant.Outlined"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_ExpDate" DateFormat="dd/MM/yyyy" Label="Expiry Date" Variant="Variant.Outlined" For="(() => _ExpDate)" />
+                </MudItem>                
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Close">Close</MudButton>
+            <MudButton Disabled="AppState.IsProcessing" ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                       Color="Color.Primary">@(AppState.IsProcessing ? "Processing" : "Save")</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+}
+
+@code {
+    [CascadingParameter]
+    public MudDialogInstance? DialogInstance { get; set; }
+    [Parameter]
+    public Item? Item { get; set; } = new();
+    private Category[]? Categories = new Category[0];
+    [Parameter]
+    public bool IsEdit { get; set; }
+
+    private DateTime? _ExpDate;
+    private HubConnection? hub;
+
+    void Close() => DialogInstance?.Close(DialogResult.Ok(true));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var builder = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+        {
+            option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+        }).WithStatefulReconnect();
+        builder.Services.Configure<HubConnectionOptions>(o => o.StatefulReconnectBufferSize = 1000);
+        hub = builder.Build();
+        await hub.StartAsync();
+        AppState.IsBusy = true;
+        if (IsEdit)
+        {
+            Item = await ProductService.GetItemById(Item!.Id);
+        }
+        else
+            Item = new Item();
+        AppState.IsBusy = false;
+    }
+
+    private void CategoryChanged(Category category)
+    {
+        Item!.Category = Categories!.FirstOrDefault(x => x.Id == category.Id);
+        Item!.CategoryID = category.Id;
+        StateHasChanged();
+    }
+
+    private async Task<IEnumerable<Category>?> SearchCategory(string value)
+    {
+        try
+        {
+            if (Categories!.Length == 0)
+                Categories = await ProductService.GetCategories();
+            if (string.IsNullOrEmpty(value))
+                return Categories!.OrderBy(x => x.CategoryName);
+
+            return Categories!.Where(x => x.CategoryName!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return new HashSet<Category>();
+    }
+
+    private async Task Save()
+    {
+        AppState.IsProcessing = true;
+        var result = await Dialog.ShowMessageBox("Confirmation",
+        $"Do you wish to {(IsEdit ? "Edit" : "Add")} Item?", yesText: "Yes", cancelText: "No");
+        if (result is null)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        else if (!result.Value)
+        {
+            AppState.IsProcessing = false;
+            return;
+        }
+        try
+        {
+            Item!.ProductName = StringConverter.ConvertToTitleCase(Item!.ProductName!);
+            Item!.Description = string.IsNullOrEmpty(Item!.Description) ? "" : StringConverter.ConvertToTitleCase(Item!.Description);
+            Item!.CreatedDate = AppState.CurrentDateTime;
+            Item!.ModifiedDate = AppState.CurrentDateTime;
+            if (!IsEdit)
+            {
+                Item!.Id = Guid.NewGuid();
+                Item!.Category = null;
+                await ProductService.AddItem(Item!);
+            }
+            else
+            {
+                Item!.Category = null;
+                await ProductService.EditItem(Item!);
+            }
+            SnackBar.Add($"Item successfully saved!", Severity.Success);
+            await hub!.SendAsync("UpdateItems");
+            Close();
+        }
+        catch (System.Exception ex)
+        {
+            Console.WriteLine($"{ex.Message} {ex.StackTrace} {ex.InnerException} {ex.Source}");
+            SnackBar.Add($"Error occured!", Severity.Error);
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await hub!.DisposeAsync();
+    }
+}

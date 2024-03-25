@@ -2,6 +2,7 @@
 @using Shared.Enums
 @inject ILabService Service
 
+@implements IAsyncDisposable
 <EditForm Model="@Data" OnValidSubmit="Save">
 	<DataAnnotationsValidator/>
 	<MudDialog>
@@ -35,6 +36,15 @@
 	public bool IsEdit { get; set; } = false;
 
 	MudTextField<string?>? _TxtName { get; set; }
+	private HubConnection? hub;
+	protected override async Task OnInitializedAsync()
+	{
+		hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+		{
+			option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+		}).WithStatefulReconnect().Build();
+		await hub.StartAsync();
+	}
 
 	void Close() => DialogInstance?.Close(DialogResult.Ok(true));
 
@@ -57,8 +67,9 @@
 				await Service.EditLabTest(Data!);
 
 			SnackBar.Add("Service Successfully Updated", Severity.Success);
-			AppState.UpdateLayout();
-			await ClearControls();
+			//AppState.UpdateLayout();
+			await hub!.SendAsync("UpdateServices");
+			Close();
 		}
 		catch (Exception)
 		{
@@ -76,5 +87,10 @@
 		await _TxtName!.FocusAsync();
 	}
 
+	public async ValueTask DisposeAsync()
+	{
+		//AppState.OnUpdateLayout -= UpdateComponent!;
+		await hub!.DisposeAsync();
+	}
 
 }

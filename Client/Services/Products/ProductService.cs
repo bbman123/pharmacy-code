@@ -1,4 +1,5 @@
-﻿using Shared.Helpers;
+﻿using ApexCharts;
+using Shared.Helpers;
 using Shared.Models.Products;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -21,7 +22,16 @@ public interface IProductService
     Task<Product?> GetProductById(Guid id);
     Task<Product[]?> GetProducts();
     Task<Product[]?> GetProductsByStore(Guid storeId);
+    Task<Product[]?> GetProductsByCategory(Guid categoryId);
 	Task<GridDataResponse<Product>?> GetPagedProducts(PaginationParameter parameter);
+
+    Task<bool> AddItem(Item model);
+    Task<bool> EditItem(Item model);
+    Task<bool> DeleteItem(Guid id);
+    Task<Item?> GetItemById(Guid id);
+    Task<Item[]?> GetItems();   
+    Task<Item[]?> GetItemsByCategory(Guid categoryId);
+    Task<GridDataResponse<Item>?> GetPagedItems(PaginationParameter parameter);
 }
 
 public class ProductService : IProductService
@@ -203,8 +213,91 @@ public class ProductService : IProductService
         }
     }
 
+    public async Task<Product[]?> GetProductsByCategory(Guid categoryId)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<Product[]?>($"api/products/byCategory/{categoryId}");
+    }
+
     public async Task<Product[]?> GetProductsByStore(Guid storeId)
     {
         return await _client.CreateClient("AppUrl").GetFromJsonAsync<Product[]?>($"api/products/byBranch/{storeId}");
+    }
+
+    public async Task<bool> AddItem(Item model)
+    {
+        try
+        {
+            var request = _client.CreateClient("AppUrl").PostAsJsonAsync("api/items", model);
+            var response = await request;
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    public async Task<bool> EditItem(Item model)
+    {
+        try
+        {
+            var request = _client.CreateClient("AppUrl").PutAsJsonAsync($"api/items/{model.Id}", model);
+            var response = await request;
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+
+    }
+    public async Task<bool> DeleteItem(Guid id)
+    {
+        try
+        {
+            var request = _client.CreateClient("AppUrl").DeleteAsync($"api/items/{id}");
+            var response = await request;
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    public async Task<Item?> GetItemById(Guid id)
+    {
+        try
+        {
+            return await _client.CreateClient("AppUrl").GetFromJsonAsync<Item?>($"api/items/{id}");
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+    public async Task<Item[]?> GetItems()
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<Item[]?>("api/items");
+    }    
+    public async Task<Item[]?> GetItemsByCategory(Guid categoryId)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<Item[]?>($"api/items/byCategory/{categoryId}");
+    }
+    public async Task<GridDataResponse<Item>?> GetPagedItems(PaginationParameter parameter)
+    {
+        try
+        {
+            var request = await _client.CreateClient("AppUrl").PostAsJsonAsync($"api/items/paged", parameter);
+            var response = await request.Content.ReadFromJsonAsync<GridDataResponse<Item>?>();
+            return response;
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
     }
 }

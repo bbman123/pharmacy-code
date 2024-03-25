@@ -1,6 +1,7 @@
 ﻿@using Client.Handlers
 @using Shared.Enums
 @inject IRefererService RefererService
+@implements IAsyncDisposable
 <EditForm Model="@Referer" OnValidSubmit="Save">
     <DataAnnotationsValidator />
     <MudDialog>
@@ -10,16 +11,22 @@
         <DialogContent>
             <MudGrid Spacing="1">                
                 <MudItem xs="12">
+                    <MudTextField @bind-Value="Referer.RefererName" AutoFocus Label="Referer Name" Variant="Variant.Outlined" For="@(() => Referer.RefererName)"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Referer.PhoneNo" Label="Phone No" Variant="Variant.Outlined" For="@(() => Referer.PhoneNo)"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" sm="6">
                     <MudSelect T="RefererType" Dense="true" AnchorOrigin="Origin.BottomCenter" Strict="true" Label="Referer Type" @bind-Value="Referer!.Type" Variant="Variant.Outlined">
                         @foreach (RefererType role in Enum.GetValues(typeof(RefererType)))
                         {
                             <MudSelectItem Value="@role">@role</MudSelectItem>
                         }
                     </MudSelect>
-                </MudItem>
+                </MudItem>       
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Referer.RefererName" Label="Referer Name" Variant="Variant.Outlined" For="@(() => Referer.RefererName)"></MudTextField>
-                </MudItem>
+                    <MudTextField Lines="2" @bind-Value="Referer.ContactAddress" Label="Address" Variant="Variant.Outlined"></MudTextField>
+                 </MudItem>
             </MudGrid>
         </DialogContent>
         <DialogActions>
@@ -35,6 +42,17 @@
     [Parameter] public Referer Referer { get; set; } = new();
     [Parameter] public bool IsEdit { get; set; } = false;
     [Parameter] public string? RedirectRoute { get; set; } = string.Empty;
+
+    private HubConnection? hub;
+    protected override async Task OnInitializedAsync()
+    {
+        hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+        {
+            option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+        }).WithStatefulReconnect().Build();
+        await hub.StartAsync();
+    }
+
 
     void Cancel() => MudDialog!.Close(DialogResult.Ok(true));
     async Task Save()
@@ -52,10 +70,11 @@
             AppState.IsProcessing = false;
             return;
         }
-        
+
         try
         {
-            Referer.ModifiedDate = DateTime.Now;
+            Referer.CreatedDate = AppState.CurrentDateTime;
+            Referer.ModifiedDate = AppState.CurrentDateTime;
             Referer.RefererName = StringConverter.ConvertToTitleCase(Referer.RefererName!);
             if (!IsEdit)
             {
@@ -66,7 +85,9 @@
             {
                 await RefererService.EditReferer(Referer);
             }
-            SnackBar.Add("Referer Successfully Saved", Severity.Success);            
+            SnackBar.Add("Referer Successfully Saved", Severity.Success);
+            await hub!.SendAsync("UpdateReferrers");
+            Cancel();
         }
         catch (Exception ex)
         {
@@ -75,11 +96,11 @@
         }
         finally
         {
-            AppState.IsProcessing = false;
-            if (!string.IsNullOrEmpty(RedirectRoute))
-                Cancel();
-            else
-                AppState.UpdateLayout();
+            AppState.IsProcessing = false;            
         }
+    }
+    public async ValueTask DisposeAsync()
+    {        
+        await hub!.DisposeAsync();
     }
 }

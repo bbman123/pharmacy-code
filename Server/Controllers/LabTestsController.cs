@@ -23,12 +23,10 @@ public class LabTestsController : ControllerBase
 	[HttpPost("paged")]
 	public async Task<ActionResult<GridDataResponse<LabTest>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
 	{
-		IQueryable<LabTest> query;
-		LabTest[] data = new LabTest[0];
-		data = await _context.LabTests.AsNoTracking().ToArrayAsync(cancellationToken);
-		query = string.IsNullOrEmpty(parameter.SearchTerm) == true ? data.AsQueryable() : data.Where(x => x.ToString()!.Contains(parameter!.SearchTerm!, StringComparison.InvariantCultureIgnoreCase)).AsQueryable();
-		var pagedResult = Paginate(query, parameter);
-		return Ok(pagedResult);
+        GridDataResponse<LabTest> response = new();
+		response!.Data = await _context.LabTests.AsNoTracking().OrderByDescending(o => o.ModifiedDate).Skip(parameter.Page).Take(parameter.PageSize).ToListAsync();
+        response.TotalCount = await _context.LabTests.CountAsync();
+        return response;
 	}
 
 	[HttpGet]
@@ -140,9 +138,19 @@ public class LabTestsController : ControllerBase
         }        
     }
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.LabTests.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.LabTests.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
-	public static GridDataResponse<LabTest> Paginate(IQueryable<LabTest> source, PaginationParameter parameters)
+    public static GridDataResponse<LabTest> Paginate(IQueryable<LabTest> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);

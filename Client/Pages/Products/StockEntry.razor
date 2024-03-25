@@ -1,19 +1,33 @@
 ﻿@inject IProductService ItemService
+@inject IStoreService StoreService
+@implements IAsyncDisposable
 
-<EditForm Model="Stock" OnValidSubmit="Save">
+<EditForm Model="@Product" OnValidSubmit="Save">
     <DataAnnotationsValidator />
     <MudDialog>
         <TitleContent>
-            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Stock</MudText>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Update" : "Add") Product</MudText>
         </TitleContent>
         <DialogContent>
             <MudGrid>      
+                <MudItem xs="12">
+                    <MudSelect T="Guid" Dense="true" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense" Strict="true" Label="Store" Value="@StoreID" ValueChanged="StoreChanged" Variant="Variant.Outlined">
+                        @foreach (var store in stores!)
+                        {
+                            <MudSelectItem Value="@store.Id">@store.BranchName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="Product!.Category!.CategoryName" ReadOnly Label="Category" Variant="Variant.Outlined"></MudTextField>
+                    <MudAutocomplete T="Category" AnchorOrigin="Origin.BottomCenter" Value="Product!.Item!.Category" Label="Category" ShowProgressIndicator="true"
+                                     SearchFunc="@SearchCategory" Dense="true" Variant="Variant.Outlined" ValueChanged="CategoryChanged" ProgressIndicatorColor="Color.Primary"
+                                     ToStringFunc="@(e => e==null ? null : $"{e.CategoryName}")" />
                  </MudItem>
                  <MudItem xs="12" sm="6">
-                     <MudTextField @bind-Value="Product!.ProductName" ReadOnly Label="Product Name" Variant="Variant.Outlined"></MudTextField>
-                 </MudItem>                 
+                    <MudAutocomplete @ref="_Items" T="Item" AnchorOrigin="Origin.BottomCenter" Value="Item" Label="Products" ValueChanged="ProductChanged"
+                                     SearchFunc="@SearchProducts" Dense="true" Variant="Variant.Outlined" ShowProgressIndicator="true"
+                                     ToStringFunc="@(e => e==null ? null : $"{e.ProductName}")" Margin="Margin.Dense" />
+                 </MudItem>                
                  <MudItem xs="12" sm="6">
                      <MudTextField Value="@(Product!.StocksOnHand + Stock!.Quantity)" Label="Current Stock" Variant="Variant.Outlined"></MudTextField>
                  </MudItem>
@@ -31,18 +45,112 @@
 
  </EditForm>
 
- @code {
+@code {
     [CascadingParameter]
     public MudDialogInstance? DialogInstance { get; set; }
+
     [Parameter]
     public Stock? Stock { get; set; }
+
     [Parameter]
     public Product? Product { get; set; }
+
     [Parameter]
     public bool IsEdit { get; set; } = false;
 
+    private Item[]? Items = [];
+
+    private Item? Item = new();
+
+    private Category[]? Categories = [];
+    private Category? Category = new();
+
+    MudAutocomplete<Item> _Items = new();
+
+    private Store? Store; private Store[]? stores = [];
+
+    private Guid StoreID, UserID;
 
     void Close() => DialogInstance?.Close(DialogResult.Ok(true));
+    private HubConnection? hub;
+    protected override async Task OnParametersSetAsync()
+    {
+        hub = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+        {
+            option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+        }).WithStatefulReconnect().Build();
+        await hub.StartAsync();
+        UserID = await localStorage.GetItemAsync<Guid>("uid");
+        var access = await localStorage.GetItemAsync<string?>("access");
+        if (access == "Admin" || access == "Master")
+        {
+            stores = await StoreService.GetStores();
+            Store = stores!.FirstOrDefault();
+            StoreID = Store!.Id;
+        }
+        else
+        {
+            StoreID = await localStorage.GetItemAsync<Guid>("branch");
+            Store = await StoreService.GetStore(StoreID);
+        }
+    }
+
+    void StoreChanged(Guid id)
+    {
+        Store = stores!.FirstOrDefault(x => x.Id == id);
+        StoreID = Store!.Id;
+        StateHasChanged();
+    }
+
+    private void CategoryChanged(Category category)
+    {
+        Item!.Category = Categories!.FirstOrDefault(x => x.Id == category.Id);
+        Item!.CategoryID = category.Id;
+        StateHasChanged();
+    }
+
+    private async Task<IEnumerable<Category>?> SearchCategory(string value)
+    {
+        try
+        {
+            if (Categories!.Length == 0)
+                Categories = await ItemService.GetCategories();
+            if (string.IsNullOrEmpty(value))
+                return Categories!.OrderBy(x => x.CategoryName);
+
+            return Categories!.Where(x => x.CategoryName!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+        return new HashSet<Category>();
+    }
+
+    private async Task<IEnumerable<Item>?> SearchProducts(string value)
+    {
+        try
+        {
+            if (Items!.Length == 0)
+                Items = await ItemService.GetItemsByCategory(Category!.Id);
+
+            if (string.IsNullOrEmpty(value))
+                return Items;
+
+            return Items!.Where(x => x.ProductName!.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        }
+        catch (System.Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        return new HashSet<Item>();
+    }
+
+    void ProductChanged(Item product)
+    {
+        Item = Items!.FirstOrDefault(x => x.Id == product.Id);        
+        StateHasChanged();
+    }
 
     private async Task Save()
     {
@@ -59,12 +167,10 @@
             var currentDateTime = DateTime.Now;
             Product!.ModifiedDate = currentDateTime;
             Stock!.Date = currentDateTime;
-            result = await ItemService.EditProduct(Product);
-            // if (!IsEdit)
-            // else
-            // {
-            //     Product!.Stocks.Where(x => x.Date == Stock!.Date).
-            // }
+            if (IsEdit)
+                result = await ItemService.AddProduct(Product);
+            else
+                result = await ItemService.EditProduct(Product);
 
             if (!result)
             {
@@ -72,11 +178,9 @@
             }
             else
             {
-                SnackBar.Add("Stock Successfully Updated", Severity.Success);
-                if (!IsEdit)
-                    Stock = new();
-                else
-                    nav.NavigateTo("inventory");
+                await hub!.SendAsync("UpdateItems");
+                SnackBar.Add("Item Successfully Updated", Severity.Success);
+                Close();
             }
         }
         catch (Exception)
@@ -88,6 +192,11 @@
         {
             AppState.IsProcessing = false;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await hub!.DisposeAsync();
     }
 
 }

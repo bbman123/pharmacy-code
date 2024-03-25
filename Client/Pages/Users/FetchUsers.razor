@@ -1,6 +1,7 @@
 ﻿@layout AppLayout
 @inject IUserService Service
 @inject IStoreService StoreService
+@implements IAsyncDisposable
 @page "/users"
 @attribute [Authorize]
 
@@ -23,53 +24,59 @@
 			<MudText Typo="Typo.h5">Manage Users</MudText>
 		</MudStack>
 	</MudHidden>
-<div style="width:250px">
+@if (AppState.IsBusy)
+{
+	<DataGridSkeleton/>
+}
+else
+{
+	<div style="width:250px">
 		<MudSelect T="Guid" Dense="true" AnchorOrigin="Origin.BottomCenter" Margin="Margin.Dense" Strict="true" Label="Search By Store" Value="@StoreID" ValueChanged="StoreChanged" Variant="Variant.Outlined">
 			@foreach (var branch in stores!)
-		{
-			<MudSelectItem Value="@branch.Id">@branch.BranchName</MudSelectItem>
-		}
-	</MudSelect>
-</div>
-<MudDataGrid 
-		T="User"		
-		Items="Users"
-		RowClick="@HandleSelectedDataItemChanged"
-		@bind-SelectedDataItem="user"
-		Outlined>
-	<Columns>
-		<PropertyColumn Title="Store" Property="x => x.Store!.BranchName" />		
-		<PropertyColumn Title="Name" Property="x => x.ToString()" />		
-		<PropertyColumn Title="Role" Property="x => x.Role.ToString()" />		
-		<TemplateColumn>
-			<CellTemplate>
-				@if (context.Item.IsActive)
-				{
-					<MudChip Size="Size.Small" Color="Color.Tertiary">Active</MudChip>
-				}
-				else
-				{
-					<MudChip Size="Size.Small" Color="Color.Error">InActive</MudChip>					
-				}
-			</CellTemplate>
-		</TemplateColumn>
-		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
-		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
-		<TemplateColumn>
-			<CellTemplate>
-				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
-				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
-			</CellTemplate>
-		</TemplateColumn>		
-	</Columns>
-	<NoRecordsContent>
-		<MudText Typo="Typo.h6">Empty record</MudText>
-	</NoRecordsContent>
-	<PagerContent>
-		<MudDataGridPager T="User" />
-	</PagerContent>
-</MudDataGrid>
+			{
+				<MudSelectItem Value="@branch.Id">@branch.BranchName</MudSelectItem>
+			}
+		</MudSelect>
+	</div>
+	<MudDataGrid T="User"
+				 Items="Users"
+				 RowClick="@HandleSelectedDataItemChanged"
+				 @bind-SelectedDataItem="user"
+			 Outlined>
+		<Columns>
+			<PropertyColumn Title="Store" Property="x => x.Store!.BranchName" />
+			<PropertyColumn Title="Name" Property="x => x.ToString()" />
+			<PropertyColumn Title="Role" Property="x => x.Role.ToString()" />
+			<TemplateColumn>
+				<CellTemplate>
+					@if (context.Item.IsActive)
+					{
+						<MudChip Size="Size.Small" Color="Color.Tertiary">Active</MudChip>
+					}
+					else
+					{
+						<MudChip Size="Size.Small" Color="Color.Error">InActive</MudChip>
+					}
+				</CellTemplate>
+			</TemplateColumn>
+			<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()" />
+			<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
+			<TemplateColumn>
+				<CellTemplate>
+					<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
+					<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
+				</CellTemplate>
+			</TemplateColumn>
+		</Columns>
+		<NoRecordsContent>
+			<MudText Typo="Typo.h6">Empty record</MudText>
+		</NoRecordsContent>
+		<PagerContent>
+			<MudDataGridPager T="User" />
+		</PagerContent>
+	</MudDataGrid>
 
+}
 
 
 
@@ -80,18 +87,30 @@
 
 	private Guid StoreID;
 	private Store? Store; private Store[]? stores = [];
-
+	private HubConnection? hub;
 	protected override async Task OnInitializedAsync()
-	{
-		AppState.OnUpdateLayout += UpdateComponent!;		
-		await GetUsers();		
+	{		
+		var builder = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+		{
+			option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+		}).WithStatefulReconnect();
+		builder.Services.Configure<HubConnectionOptions>(o => o.StatefulReconnectBufferSize = 1000);
+		hub = builder.Build();
+		await hub.StartAsync();
+		hub.On("UpdateUsers", async () =>
+		{
+			await GetUsers();
+		});		
+		await GetUsers();
 	}
 	async Task GetUsers()
 	{
+		AppState.IsBusy = true;
 		Users = await Service.GetUsers(StoreID);		
 		stores = await StoreService.GetStores();
 		Store = stores!.FirstOrDefault();
 		StoreID = Store!.Id;
+		AppState.IsBusy = false;
 		StateHasChanged();
 	}
 	async void StoreChanged(Guid id)
@@ -179,9 +198,10 @@
 		StateHasChanged();
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
-		AppState.OnUpdateLayout -= UpdateComponent!;
+		//AppState.OnUpdateLayout -= UpdateComponent!;
+		await hub!.DisposeAsync();
 	}
 
 }

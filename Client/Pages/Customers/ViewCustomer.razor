@@ -1,0 +1,56 @@
+﻿@layout AppLayout
+@page "/customer/{id:guid}"
+@using Client.Pages.Orders
+@inject ICustomerService Service
+@attribute [Authorize]
+
+<MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="pa-2">
+     <MudTooltip Text="Back" Duration="2000" Placement="Placement.Top">
+         <MudFab Label="Back" DisableElevation="true" StartIcon="@Icons.Material.Filled.ArrowBack"
+                 OnClick="@(() => nav.NavigateTo("customers"))" Color="Color.Dark" Size="Size.Small" />
+     </MudTooltip>
+     <MudText Typo="Typo.h5">Customer Details</MudText>
+ </MudStack>
+@if (AppState.IsBusy)
+{
+    <LoaderSkeleton/>
+}
+else
+{
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="Customer!.CustomerName" AutoFocus Label="Customer Name" Margin="Margin.Dense" Variant="Variant.Outlined" For="@(() => Customer.CustomerName)"></MudTextField>
+         </MudItem>
+         <MudItem xs="12" sm="6">
+             <MudTextField @bind-Value="Customer!.PhoneNo" Label="Phone Number" Margin="Margin.Dense" Variant="Variant.Outlined" For="@(() => Customer.PhoneNo)"></MudTextField>
+         </MudItem>
+         <MudItem xs="12" sm="6">
+             <MudTextField @bind-Value="Customer!.Gender" Label="Gender" Margin="Margin.Dense" Variant="Variant.Outlined" ></MudTextField>
+         </MudItem>
+         <MudItem xs="12" sm="6">
+             <MudTextField @bind-Value="Customer!.Age" Label="Age" Margin="Margin.Dense" Variant="Variant.Outlined" ></MudTextField>
+         </MudItem>
+         <MudItem xs="12">
+             <MudTextField @bind-Value="Customer!.ContactAddress" Lines="3" Label="Home Address" Variant="Variant.Outlined"></MudTextField>
+         </MudItem>
+         <MudItem xs="12">
+             <CustomerPharmOrderDetails Data="Customer!.PharmacyOrders.OrderByDescending(d => d.ModifiedDate).Take(30).ToArray()"/>
+         </MudItem>
+         <MudItem xs="12">
+             <CustomerLabOrderDetails Data="Customer!.LabOrders.OrderByDescending(d => d.ModifiedDate).Take(30).ToArray()" />
+         </MudItem>        
+     </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid id { get; set; }
+    public Customer? Customer { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.IsBusy = true;
+        Customer = await Service.GetCustomerById(id);
+        AppState.IsBusy = false;
+    }
+
+}

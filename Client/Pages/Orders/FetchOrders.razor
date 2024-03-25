@@ -1,6 +1,6 @@
 ﻿@layout AppLayout
 @page "/orders"
-@attribute [Authorize(Roles = "Admin, Seller, Lab")]
+@attribute [Authorize(Roles = "Master, Admin, Seller, Lab")]
 @inject IOrderService OrderService
 @inject IStoreService StoreService
 
@@ -26,7 +26,7 @@ else
             <MudToggleGroup T="string" Style="width: 300px;" Value="AppState.SelectedOption" ValueChanged="OptionChanged" Outline Delimiters Dense Rounded CheckMark FixedContent>
                 <MudToggleItem Value="@("Lab")" />
                 <MudToggleItem Value="@("Pharmacy")" />
-         </MudToggleGroup>
+            </MudToggleGroup>
         </MudStack>
     </MudHidden>    
      <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pt-4">
@@ -97,13 +97,13 @@ else
         nav.NavigateTo("order");
     }
 
-    async void StoreChanged(Guid id)
+    void StoreChanged(Guid id)
     {
         Store = stores!.FirstOrDefault(x => x.Id == id);
         AppState!.GlobalID = Store!.Id;  
     }
 
-    async void OptionChanged(string option)
+    void OptionChanged(string option)
     {
         AppState.SelectedOption = option;                
     }    

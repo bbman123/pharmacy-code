@@ -1,5 +1,6 @@
 ﻿@layout AppLayout
 @inject IStoreService Service
+@implements IAsyncDisposable
 @page "/stores"
 @attribute [Authorize]
 
@@ -23,33 +24,38 @@
 		</MudStack>
 	</MudHidden>
 
-<MudDataGrid @ref="_gridComponent"
-		T="Store"
-		ServerData="GetGridData"
-		RowClick="@HandleSelectedDataItemChanged"
-		@bind-SelectedDataItem="category"
-		Outlined>
-	<Columns>
-		<PropertyColumn Title="Name" Property="x => x.BranchName" />		
-		<PropertyColumn Title="Address" Property="x => x.BranchAddress" />		
-		<PropertyColumn Title="Contact No" Property="x => x.PhoneNo1" />				
-		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
-		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
-		<TemplateColumn>
-			<CellTemplate>
-				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
-				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
-			</CellTemplate>
-		</TemplateColumn>		
-	</Columns>
-	<NoRecordsContent>
-		<MudText Typo="Typo.h6">Empty record</MudText>
-	</NoRecordsContent>
-	<PagerContent>
-		<MudDataGridPager T="Store" />
-	</PagerContent>
-</MudDataGrid>
-
+@if (AppState.IsBusy)
+{
+	<DataGridSkeleton/>
+}
+else
+{
+	<MudDataGrid @ref="_gridComponent"
+				 T="Store"
+				 ServerData="GetGridData"
+				 RowClick="@HandleSelectedDataItemChanged"
+				 @bind-SelectedDataItem="category"
+			 Outlined>
+		<Columns>
+			<PropertyColumn Title="Name" Property="x => x.BranchName" />
+			<PropertyColumn Title="Address" Property="x => x.BranchAddress" />
+			<PropertyColumn Title="Contact No" Property="x => x.PhoneNo1" />
+			<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()" />
+			<TemplateColumn>
+				<CellTemplate>
+					<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
+					<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
+				</CellTemplate>
+			</TemplateColumn>
+		</Columns>
+		<NoRecordsContent>
+			<MudText Typo="Typo.h6">Empty record</MudText>
+		</NoRecordsContent>
+		<PagerContent>
+			<MudDataGridPager T="Store" />
+		</PagerContent>
+	</MudDataGrid>
+}
 
 
 
@@ -57,21 +63,52 @@
 	private MudDataGrid<Store>? _gridComponent;
 	private Store? category =new();
 
-	protected override void OnInitialized()
+	private HubConnection? hub;
+	protected override async Task OnInitializedAsync()
 	{
-		AppState.OnUpdateLayout += UpdateComponent!;
-		base.OnInitialized();
+		AppState.IsBusy = true;
+		var builder = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+		{
+			option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+		}).WithStatefulReconnect();
+		builder.Services.Configure<HubConnectionOptions>(o => o.StatefulReconnectBufferSize = 1000);
+		hub = builder.Build();
+		await hub.StartAsync();
+		hub.On("UpdateStores", async () =>
+		{
+			await _gridComponent!.ReloadServerData();
+		});
+	}
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		if (firstRender)
+		{
+			AppState.IsBusy = false;
+		}
 	}
 
 	private async Task<GridData<Store>> GetGridData(GridState<Store> request)
 	{
-		var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
-		var response = await Service.GetPagedStores(parameter);
-		return new GridData<Store>()
+		try
 		{
-			Items = response!.Data!,
-			TotalItems =response.TotalCount
-		};
+			var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
+			var response = await Service.GetPagedStores(parameter);
+			return new GridData<Store>()
+				{
+					Items = response!.Data!,
+					TotalItems = response.TotalCount
+				};
+		}
+		catch (Exception)
+		{
+			return new GridData<Store>();
+		}
+		finally
+		{
+			AppState.IsBusy = false;
+			StateHasChanged();
+		}
 	}
 
 	async Task HandleSelectedDataItemChanged(DataGridRowClickEventArgs<Store> category)
@@ -147,9 +184,10 @@
 		StateHasChanged();
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
-		AppState.OnUpdateLayout -= UpdateComponent!;
+		//AppState.OnUpdateLayout -= UpdateComponent!;
+		await hub!.DisposeAsync();
 	}
 
 }

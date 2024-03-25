@@ -2,13 +2,13 @@
 @inject IOrderService OrderService
 @inject IStoreService StoreService
 
-<MudDataGrid @ref="_gridComponent"
-             T="OrderWithData"
+<MudDataGrid T="OrderWithData"
+             @ref="_gridComponent"             
              ServerData="GetGridData"
              RowClick="@HandleSelectedDataItemChanged"
              @bind-SelectedDataItem="data"
-              Dense
-              Outlined>
+             Dense
+             Outlined>
     <ToolBarContent>
         <MudSpacer />
         <MudTextField @bind-Value="searchString" Placeholder="Search" Immediate="true"
@@ -18,7 +18,8 @@
         <PropertyColumn Property="x => x.ReceiptNo" Title="#" />
         <PropertyColumn Property="x => x.Date" Title="Date" Format="dd/MM/yyyy" />
         <PropertyColumn Property="x => x.TotalAmount" Title="Total" Format="N2" />
-        <PropertyColumn Property="x => x.ModifiedDate" Title="Modified Date" />        
+        <PropertyColumn Property="x => x.Discount" Title="Discount" Format="N2" />
+        <PropertyColumn Property="x => x.SubTotal" Title="Sub Total" Format="N2" />        
         <TemplateColumn>
             <CellTemplate>
                 <MudButton StartIcon="@Icons.Material.Filled.Search" Color="Color.Primary" OnClick="() => OnExpand(context.Item.Id)" Size="Size.Small">Edit</MudButton>

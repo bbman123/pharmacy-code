@@ -20,28 +20,33 @@ public class ProductsController : ControllerBase
 		_logger = logger;
 	}
 	[HttpPost("paged")]
-	public async Task<ActionResult<GridDataResponse<Product>>> PagedProducts(PaginationParameter parameter, CancellationToken cancellationToken)
+	public async Task<ActionResult<GridDataResponse<Product>?>> PagedProducts(PaginationParameter parameter, CancellationToken cancellationToken)
 	{
-		IQueryable<Product> query;
-		Product[] data = new Product[0];
+        GridDataResponse<Product>? response = new();
 		if (parameter.FilterId is null)
 		{
-            data = await _context.Products.AsNoTracking()
+            response!.Data = await _context.Products.AsNoTracking()
                                 .AsSplitQuery()
-                                .Include(x => x.Category)
-                                .ToArrayAsync(cancellationToken);
+                                .Include(x => x.Item)
+                                .ThenInclude(x => x.Category)
+                                .Skip(parameter.Page)
+                                .Take(parameter.PageSize)
+                                .ToListAsync(cancellationToken);
+            response.TotalCount = await _context.Products.CountAsync();
         }		
 		else
 		{
-            data = await _context.Products.AsNoTracking()
+            response!.Data = await _context.Products.AsNoTracking()
                                 .AsSplitQuery()
-                                .Include(x => x.Category)
-								.Where(x => x.CategoryID == parameter.FilterId)
-                                .ToArrayAsync(cancellationToken);
+                                .Include(x => x.Item)
+                                .ThenInclude(x => x!.Category)
+                                .Where(x => x!.Item!.CategoryID == parameter.FilterId)
+                                .Skip(parameter.Page)
+                                .Take(parameter.PageSize)
+                                .ToListAsync(cancellationToken);
+            response.TotalCount = await _context.Products.Where(x => x!.Item!.CategoryID == parameter.FilterId).CountAsync();
         }
-		query = data.AsQueryable();
-		var pagedResult = Paginate(query, parameter);
-		return Ok(pagedResult);
+        return response;
 	}
 
 	[HttpGet]
@@ -67,17 +72,15 @@ public class ProductsController : ControllerBase
     {
         var products = await _context.Products.AsSplitQuery()
                                              .Include(b => b.Store)
-                                             .Include(c => c.Category)
+                                             .Include(x => x.Item)
+                                             .ThenInclude(x => x.Category)
                                              .Where(x => x.StoreId == id && x.StocksOnHand >= 1)
                                              .OrderByDescending(x => x.ModifiedDate)
                                              .Select(p => new Product
                                              {
                                                  Id = p.Id,
-                                                 Barcode = p.Barcode,
-                                                 ProductName = p.ProductName,
-                                                 Description = p.Description,
-                                                 CategoryID = p.CategoryID,
-                                                 UnitPrice = p.UnitPrice,
+                                                 ItemId = p.ItemId,
+                                                 Item = p.Item,
                                                  ReorderLevel = p.ReorderLevel,
                                                  StocksOnHand = p.StocksOnHand,
                                                  CreatedDate = p.CreatedDate,
@@ -139,9 +142,19 @@ public class ProductsController : ControllerBase
 		return CreatedAtAction("GetProduct", new { id = Product.Id }, Product);
 	}
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.Products.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.Products.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
-	public static GridDataResponse<Product> Paginate(IQueryable<Product> source, PaginationParameter parameters)
+    public static GridDataResponse<Product> Paginate(IQueryable<Product> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);

@@ -1,4 +1,5 @@
-﻿using Client.Pages.Reports.Templates.Lab;
+﻿using Client.Pages.Reports;
+using Client.Pages.Reports.Templates.Lab;
 using Client.Pages.Reports.Templates.Receipt;
 using Microsoft.JSInterop;
 using Shared.Helpers;
@@ -13,17 +14,20 @@ namespace Client.Services.Orders;
 
 public interface IOrderService
 {
-    Task<bool> AddProductOrder(Order model);
+    Task<bool> AddProductOrder(PharmacyOrder model);
     Task<bool> AddLabOrder(LabOrder model);
     Task<bool> UpdateLabOrder(LabOrder? model);
     Task<int> GetReceiptNo(string Type, Guid StoreID);
     Task<LabOrder?> GetLabOrder(Guid id);
-    Task<Order?> GetPharmacyOrder(Guid id);    
+    Task<LabOrder?> GetLabOrder(int receiptNumber);
+    Task<PharmacyOrder?> GetPharmacyOrder(Guid id);
+    Task<PharmacyOrder?> GetPharmacyOrder(int receiptNumber);
     Task<GridDataResponse<OrderWithData>?> GetOrderByStore(string Type, PaginationParameter parameter);
     List<LabOrderItem> LabOrderItems(Guid id, List<OrderCartRow> rows);
     List<ProductOrderItem> DrugOrderItems(Guid id, List<OrderCartRow> rows);
     ICollection<OrderReferer> GetOrderReferers(Guid id, string type, ICollection<OrderReferer> referers);
     Task GetReceipt(string Type, ReportData report);
+    Task GetBillQrCode(Guid id, string Type);
     Task GetLabResults(Guid id);
 }
 public class OrderService : IOrderService
@@ -67,7 +71,7 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task<bool> AddProductOrder(Order model)
+    public async Task<bool> AddProductOrder(PharmacyOrder model)
     {
         try
         {
@@ -90,9 +94,9 @@ public class OrderService : IOrderService
         {
             OrderId = id,
             ProductId = i!.Product!.Id,
-            Product = i!.Product!.ProductName,
+            Product = i!.Product!.Item!.ProductName,
             Cost = i!.Cost,
-            Quantity = (double)i!.Quantity,
+            Quantity = i!.Quantity,
 
         }).ToList();
         return items;
@@ -141,7 +145,14 @@ public class OrderService : IOrderService
         }).ToList();
         return items;
     }
-
+    public async Task GetBillQrCode(Guid id, string Type)
+    {
+        var code = new Converter().ConvertImageToByte(id);
+        var document = new BillReceipt(code, Type);
+        byte[]? content = document.Create();
+        if (content != null)
+            await _js.InvokeAsync<object>("exportFile", $"Receipt-{Guid.NewGuid()}.pdf", Convert.ToBase64String(content));
+    }
     public async Task GetReceipt(string Type, ReportData report)
     {
         byte[]? content = null;
@@ -191,10 +202,19 @@ public class OrderService : IOrderService
     {
         return await _client.CreateClient("AppUrl").GetFromJsonAsync<LabOrder?>($"api/laborders/{id}");
     }
-
-    public async Task<Order?> GetPharmacyOrder(Guid id)
+    
+    public async Task<LabOrder?> GetLabOrder(int receiptNumber)
     {
-        return await _client.CreateClient("AppUrl").GetFromJsonAsync<Order?>($"api/orders/{id}");
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<LabOrder?>($"api/laborders/byreceiptno/{receiptNumber}");
+    }
+
+    public async Task<PharmacyOrder?> GetPharmacyOrder(Guid id)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<PharmacyOrder?>($"api/orders/{id}");
+    }
+    public async Task<PharmacyOrder?> GetPharmacyOrder(int receiptNumber)
+    {
+        return await _client.CreateClient("AppUrl").GetFromJsonAsync<PharmacyOrder?>($"api/orders/byreceiptno/{receiptNumber}");
     }
 
     public async Task GetLabResults(Guid id)

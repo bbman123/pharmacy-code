@@ -24,17 +24,29 @@ public class LabOrdersController : ControllerBase
 	[HttpPost("paged")]
 	public async Task<ActionResult<GridDataResponse<OrderWithData>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
 	{
-		IQueryable<LabOrder> query;
-		LabOrder[] data = [];
-		data = await _context.LabOrders.AsNoTracking()
+        GridDataResponse<OrderWithData>? response = new();
+        response!.Data = await _context.LabOrders.AsNoTracking()
                                        .AsSplitQuery()
                                        .Include(x => x.Store)
                                        .Include(x => x.Items)
                                        .Where(store => store.StoreId == parameter.FilterId)
-                                       .ToArrayAsync(cancellationToken);
-		query = data.AsQueryable();
-        var pagedResult = Paginate(query, parameter);
-		return Ok(pagedResult);
+                                       .OrderByDescending(c => c.CreatedDate)
+                                        .Skip(parameter.Page)
+                                        .Take(parameter.PageSize)
+                                        .Select(x => new OrderWithData
+                                        {
+                                            Id = x.Id,
+                                            Date = x.OrderDate,
+                                            StoreName = x.Store!.BranchName,
+                                            OrderType = "Lab",
+                                            ReceiptNo = x.ReceiptNo,
+                                            TotalAmount = x.Total,
+                                            Status = x.Status,
+                                            CreatedDate = x.CreatedDate,
+                                            ModifiedDate = x.ModifiedDate
+                                        }).ToListAsync();
+        response!.TotalCount = await _context.LabOrders.Where(store => store.StoreId == parameter.FilterId).CountAsync();
+        return response;
 	}
 
 	[HttpGet]
@@ -60,6 +72,26 @@ public class LabOrdersController : ControllerBase
                                       .Include(s => s!.Diagonses!)
                                       .ThenInclude(s => s!.LabScientist)
                                       .SingleOrDefaultAsync(x => x.Id == id);
+		return order;
+	}
+    
+    [HttpGet("byreceiptno/{rno}")]
+	public async Task<ActionResult<LabOrder?>> GetLabOrder(int rno)
+	{
+		if (_context.LabOrders == null)
+		{
+			return NotFound();
+		}
+        var order = await _context.LabOrders.AsNoTracking()
+                                      .AsSplitQuery()
+                                      .Include(s => s!.Customer!)
+                                      .Include(s => s!.User!)
+                                      .Include(s => s!.ConsultedBy)
+                                      .Include(s => s!.Store!)
+                                      .Include(s => s!.Items!)
+                                      .Include(s => s!.Diagonses!)
+                                      .ThenInclude(s => s!.LabScientist)
+                                      .SingleOrDefaultAsync(x => x.ReceiptNo == rno);
 		return order;
 	}
 
@@ -121,9 +153,19 @@ public class LabOrdersController : ControllerBase
 		return CreatedAtAction("GetLabOrder", new { id = order.Id }, order);
 	}
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.LabOrders.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.LabOrders.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
-	public static GridDataResponse<OrderWithData> Paginate(IQueryable<LabOrder> source, PaginationParameter parameters)
+    public static GridDataResponse<OrderWithData> Paginate(IQueryable<LabOrder> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);

@@ -23,12 +23,14 @@ public class CustomersController : ControllerBase
 	[HttpPost("paged")]
 	public async Task<ActionResult<GridDataResponse<Customer>>> PagedCategories(PaginationParameter parameter, CancellationToken cancellationToken)
 	{
-		IQueryable<Customer> query;
-		Customer[] data = new Customer[0];
-		data = await _context.Customers.AsNoTracking().ToArrayAsync(cancellationToken);
-		query = string.IsNullOrEmpty(parameter.SearchTerm) == true ? data.AsQueryable() : data.Where(x => x.ToString()!.Contains(parameter!.SearchTerm!, StringComparison.InvariantCultureIgnoreCase)).AsQueryable();
-		var pagedResult = Paginate(query, parameter);
-		return Ok(pagedResult);
+        GridDataResponse<Customer> response = new();
+        response!.Data = await _context.Customers.AsNoTracking()
+                                                 .OrderByDescending(o => o.ModifiedDate)
+                                                 .Skip(parameter.Page)
+                                                 .Take(parameter.PageSize)
+                                                 .ToListAsync();
+        response!.TotalCount = await _context.Customers.AsNoTracking().CountAsync();
+        return response;
 	}
 
 	[HttpGet]
@@ -101,9 +103,19 @@ public class CustomersController : ControllerBase
 		return CreatedAtAction("GetCustomer", new { id = category.Id }, category);
 	}
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.Customers.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.Customers.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
-	public static GridDataResponse<Customer> Paginate(IQueryable<Customer> source, PaginationParameter parameters)
+    public static GridDataResponse<Customer> Paginate(IQueryable<Customer> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);

@@ -146,6 +146,18 @@ public class UsersController : ControllerBase
         return result;
     }
 
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.Users.FindAsync(id);
+        if (record is null)
+            return NotFound();
+
+        _context.Users.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
     private bool UserExists(Guid id)
     {
         return (_context.Users?.Any(e => e.Id == id)).GetValueOrDefault();

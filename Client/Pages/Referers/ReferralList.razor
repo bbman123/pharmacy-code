@@ -1,0 +1,55 @@
+﻿<MudDataGrid T="OrderReferer"
+             Items="@Data"
+             RowClick="@HandleSelectedDataItemChanged"
+             @bind-SelectedDataItem="SelectedOrder"
+              Dense
+              Outlined>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Referrals</MudText>
+    </ToolBarContent>
+    <Columns>        
+        <PropertyColumn Property="@(x => x.LabOrderId != null ? x.LabOrder!.ReceiptNo : x.PharmacyOrder!.ReceiptNo  )" Title="#" />
+        <PropertyColumn Property="@(x => x.LabOrderId != null ? "Lab" : "Pharmacy" )" Title="Type" />
+        <PropertyColumn Property="x => x.Price" Title="Total" Format="N2" />
+        <TemplateColumn  Title="Payment Status">
+            <CellTemplate>
+                @if (context.Item.PaymentStatus == Shared.Enums.PaymentStatus.Unpaid)
+                {
+                    <MudChip Size="Size.Small" Color="Color.Error">Unpaid</MudChip>
+                }
+                @if (context.Item.PaymentStatus == Shared.Enums.PaymentStatus.Full)
+                {
+                    <MudChip Size="Size.Small" Color="Color.Error">Paid</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.CreatedDate" Title="Date" Format="dd/MM/yyyy" />
+        <TemplateColumn>
+            <CellTemplate>
+                <MudButton StartIcon="@Icons.Material.Filled.Search" Color="Color.Primary" OnClick="() => OnExpand(context.Item.Id)" Size="Size.Small">View</MudButton>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Typo="Typo.h6">No records found</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudDataGridPager T="LabOrder" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [Parameter]
+    public OrderReferer[]? Data { get; set; } = [];
+    private OrderReferer? SelectedOrder;
+
+    void HandleSelectedDataItemChanged(DataGridRowClickEventArgs<OrderReferer> item)
+    {
+        OnExpand(item.Item.Id);
+    }
+
+    void OnExpand(Guid id)
+    {
+        nav.NavigateTo($"pharmacyorder/{id}");
+    }
+}

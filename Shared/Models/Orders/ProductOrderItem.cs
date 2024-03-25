@@ -15,7 +15,8 @@ public class ProductOrderItem
     public Guid OrderId { get; set; }
     public Guid ProductId { get; set; }
     public string? Product { get; set; }
-    public double Quantity { get; set; }
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal Quantity { get; set; }
     [Column(TypeName = "decimal(18, 2)")]
     public decimal Cost { get; set; }
 }

@@ -25,7 +25,7 @@ else
     [Parameter]
     public string? option { get; set; }
 
-    Order? PharmacyOrder { get; set; }
+    PharmacyOrder? PharmacyOrder { get; set; }
     LabOrder? LabOrder { get; set; }
 
     protected override async Task OnParametersSetAsync()

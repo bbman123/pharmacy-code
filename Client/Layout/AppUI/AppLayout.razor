@@ -23,6 +23,28 @@
     
             @if (_topMenuOpen == false)
             {
+                <AuthorizeView Roles="Master">
+                    <MudNavMenu Color="Color.Primary" Margin="Margin.Dense" Rounded="true" Class="pa-2">
+                        <MudNavLink Href="/dashboard">Dashboard</MudNavLink>                        
+                        <MudNavGroup Title="Customers" ExpandIcon="@Icons.Material.Filled.ExpandMore">
+                            <MudNavLink Href="/customers">Customers</MudNavLink>
+                            <MudNavLink Href="/referers">Referers</MudNavLink>                            
+                        </MudNavGroup>
+                        <MudNavGroup Title="Items" ExpandIcon="@Icons.Material.Filled.ExpandMore">
+                            <MudNavLink Href="/categories">Categories</MudNavLink>
+                            <MudNavLink Href="/items">Products</MudNavLink>
+                            <MudNavLink Href="/products">Stocks</MudNavLink>
+                            <MudNavLink Href="/charges">Charges</MudNavLink>
+                        </MudNavGroup>
+                        <MudNavLink Href="/services">Services</MudNavLink>
+                        @* <MudNavGroup Title="Lab" ExpandIcon="@Icons.Material.Filled.ExpandMore">                            
+                            <MudNavLink Href="/diagnosis">Test Diagnosis</MudNavLink>
+                        </MudNavGroup> *@
+                        <MudNavLink Href="/orders">Orders</MudNavLink>                        
+                        <MudNavLink Href="/stores">Stores</MudNavLink>                        
+                        @* <MudNavLink OnClick="@(async () => await Dialog.ShowAsync<ReportDialog>(""))">Reports</MudNavLink> *@
+                    </MudNavMenu>                
+                </AuthorizeView>
                 <AuthorizeView Roles="Admin">
                     <MudNavMenu Color="Color.Primary" Margin="Margin.Dense" Rounded="true" Class="pa-2">
                         <MudNavLink Href="/dashboard">Dashboard</MudNavLink>                        
@@ -32,7 +54,8 @@
                         </MudNavGroup>
                         <MudNavGroup Title="Items" ExpandIcon="@Icons.Material.Filled.ExpandMore">
                             <MudNavLink Href="/categories">Categories</MudNavLink>
-                            <MudNavLink Href="/products">Products</MudNavLink>
+                            <MudNavLink Href="/items">Products</MudNavLink>
+                            <MudNavLink Href="/products">Stocks</MudNavLink>
                             <MudNavLink Href="/charges">Charges</MudNavLink>
                         </MudNavGroup>
                         <MudNavLink Href="/services">Services</MudNavLink>
@@ -40,7 +63,6 @@
                             <MudNavLink Href="/diagnosis">Test Diagnosis</MudNavLink>
                         </MudNavGroup> *@
                         <MudNavLink Href="/orders">Orders</MudNavLink>                        
-                        <MudNavLink Href="/stores">Stores</MudNavLink>                        
                         @* <MudNavLink OnClick="@(async () => await Dialog.ShowAsync<ReportDialog>(""))">Reports</MudNavLink> *@
                     </MudNavMenu>                
                 </AuthorizeView>

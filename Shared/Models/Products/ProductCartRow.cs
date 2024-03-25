@@ -7,7 +7,7 @@ public class ProductCartRow
     [Column(TypeName = "decimal(18,2)")]
     public decimal Quantity { get; set; } = 0;
     [Column(TypeName = "decimal(18, 2)")]
-    public decimal Cost => Product is null ? 0 : Product!.UnitPrice;
+    public decimal Cost => Product is null ? 0 : Product!.Item!.UnitPrice;
     [Column(TypeName = "decimal(18, 2)")]
     public decimal Total => Quantity * Cost;
     public Product? Product { get; set; } = new();

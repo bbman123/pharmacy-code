@@ -8,6 +8,7 @@ using Npgsql;
 using Microsoft.IdentityModel.Tokens;
 using Server.Data;
 using Server.Hubs;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +25,7 @@ builder.Services.AddRazorPages();
 
 string ConnectionString = string.Empty;
 #if DEBUG
-    ConnectionString = builder.Configuration.GetConnectionString("Production")!;
+    ConnectionString = builder.Configuration.GetConnectionString("Local")!;
 #else
     ConnectionString = builder.Configuration.GetConnectionString("Production");
 #endif
@@ -51,11 +52,23 @@ builder.Services.AddAuthentication(x =>
         ValidateIssuer = false,
         ValidateAudience = false,
     };
+    x.Authority = "https://keycloak/auth/realms/master";
+    x.Audience = "ClientID";
+    x.Events = new JwtBearerEvents
+    {
+
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            // Read the token out of the query string
+            context.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
 });
 
-builder.Services.AddSignalR(hubOptions => {
-     hubOptions.EnableDetailedErrors = true;
-     hubOptions.KeepAliveInterval = System.TimeSpan.FromMinutes(1000);
+builder.Services.AddSignalR(options => {    
+    options.StatefulReconnectBufferSize = 1000;
  });
 
 var app = builder.Build();
@@ -84,7 +97,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers();
-app.MapHub<SignalRHubs>("/hubs");
+app.MapHub<SignalRHubs>("/hubs", options =>
+{
+    options.AllowStatefulReconnects = true;
+});
 app.MapFallbackToFile("index.html");
 
 app.Run();

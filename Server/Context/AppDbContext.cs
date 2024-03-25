@@ -21,7 +21,7 @@ public partial class AppDbContext : DbContext
     public DbSet<Customer> Customers { get; set; }
     public DbSet<Category> Categories { get; set; }
     public DbSet<Product> Products { get; set; }    
-    public DbSet<Order> Orders { get; set; }        
+    public DbSet<PharmacyOrder> Orders { get; set; }        
     public DbSet<ProductOrderItem> OrderItems { get; set; }        
     public DbSet<OrderReferer> OrderReferers { get; set; }        
     public DbSet<LabTest> LabTests  { get; set; }
@@ -29,4 +29,11 @@ public partial class AppDbContext : DbContext
     public DbSet<LabOrderItem> LabOrderItems  { get; set; }
     public DbSet<LabDiagnose> LabDiagonses  { get; set; }
     public DbSet<Charge> Charges  { get; set; }
+    public DbSet<Item> Items { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Customer>().Property(p => p.Age).HasDefaultValue(0);
+        base.OnModelCreating(modelBuilder);
+    }
 }

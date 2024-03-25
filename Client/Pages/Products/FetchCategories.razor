@@ -1,5 +1,6 @@
 ﻿@layout AppLayout
 @inject IProductService ProductService
+@implements IAsyncDisposable
 @page "/categories"
 @attribute [Authorize]
 
@@ -23,32 +24,38 @@
 		</MudStack>
 	</MudHidden>
 
-<MudDataGrid @ref="_gridComponent"
-		T="Category"
-		ServerData="GetGridData"
-		RowClick="@HandleSelectedDataItemChanged"
-		@bind-SelectedDataItem="category"
-		Outlined>
-	<Columns>
-		<PropertyColumn Title="Name" Property="x => x.CategoryName" />
-		<PropertyColumn Title="Description" Property="x => x.Description" />		
-		<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()"/>
-		<PropertyColumn Title="Date Modified" Property="@(x => (x.ModifiedDate.ToString()))" />
-		<TemplateColumn>
-			<CellTemplate>
-				<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
-				<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
-			</CellTemplate>
-		</TemplateColumn>		
-	</Columns>
-	<NoRecordsContent>
-		<MudText Typo="Typo.h6">Empty record</MudText>
-	</NoRecordsContent>
-	<PagerContent>
-		<MudDataGridPager T="Category" />
-	</PagerContent>
-</MudDataGrid>
+@if (AppState.IsBusy)
+{
+	<DataGridSkeleton/>
+}
+else
+{
+	<MudDataGrid @ref="_gridComponent"
+				 T="Category"
+				 ServerData="GetGridData"
+				 RowClick="@HandleSelectedDataItemChanged"
+				 @bind-SelectedDataItem="category"
+			 Outlined>
+		<Columns>
+			<PropertyColumn Title="Name" Property="x => x.CategoryName" />
+			<PropertyColumn Title="Description" Property="x => x.Description" />
+			<PropertyColumn Title="Date Created" Property="x => x.CreatedDate.ToString()" />
+			<TemplateColumn>
+				<CellTemplate>
+					<MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="() => OnEdit(context.Item)" Size="Size.Small">Edit</MudButton>
+					<MudButton StartIcon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="() => OnDelete(context.Item.Id)" Size="Size.Small">Delete</MudButton>
+				</CellTemplate>
+			</TemplateColumn>
+		</Columns>
+		<NoRecordsContent>
+			<MudText Typo="Typo.h6">Empty record</MudText>
+		</NoRecordsContent>
+		<PagerContent>
+			<MudDataGridPager T="Category" />
+		</PagerContent>
+	</MudDataGrid>
 
+}
 
 
 
@@ -57,22 +64,55 @@
 	private Category? category =new();
 	private EditContext? EditContext;
 
-	protected override void OnInitialized()
+	private HubConnection? hub;
+	protected override async Task OnInitializedAsync()
 	{
-		AppState.OnUpdateLayout += UpdateComponent!;
+		AppState.IsBusy = true;
+		var builder = new HubConnectionBuilder().WithUrl(nav.ToAbsoluteUri("/hubs"), option =>
+		{
+			option.AccessTokenProvider = () => Task.FromResult(AppState.Token)!;
+		}).WithStatefulReconnect();
+		builder.Services.Configure<HubConnectionOptions>(o => o.StatefulReconnectBufferSize = 1000);
+		hub = builder.Build();
+		await hub.StartAsync();
+		hub.On("UpdateCategories", async () =>
+		{
+			await _gridComponent!.ReloadServerData();
+		});
+
+		//AppState.OnUpdateLayout += UpdateComponent!;
 		EditContext = new EditContext(category!);
-		base.OnInitialized();
+	}
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		if (firstRender)
+		{
+			AppState.IsBusy = false;
+		}
 	}
 
 	private async Task<GridData<Category>> GetGridData(GridState<Category> request)
 	{
-		var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
-		var response = await ProductService.GetPagedCategories(parameter);
-		return new GridData<Category>()
+		try
 		{
-			Items = response!.Data!,
-			TotalItems =response.TotalCount
-		};
+			var parameter = new PaginationParameter { Page = request.Page, PageSize = request.PageSize };
+			var response = await ProductService.GetPagedCategories(parameter);
+			return new GridData<Category>()
+				{
+					Items = response!.Data!,
+					TotalItems = response.TotalCount
+				};
+		}
+		catch (Exception)
+		{
+			return new GridData<Category>();
+		}
+		finally
+		{
+			AppState.IsBusy = false;
+			StateHasChanged();
+		}
 	}
 
 	async Task HandleSelectedDataItemChanged(DataGridRowClickEventArgs<Category> category)
@@ -148,9 +188,9 @@
 		StateHasChanged();
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
 		AppState.OnUpdateLayout -= UpdateComponent!;
+		await hub!.DisposeAsync();
 	}
-
 }

@@ -14,7 +14,8 @@ public class CartValidation
     public int? RowsCount { get; set; }
     public decimal GrandTotal { get; set; }
     public decimal AmountPaid { get; set; }
-    public decimal AmountDue => GrandTotal + Consultation;
+    public decimal Discount { get; set; }
+    public decimal AmountDue { get; set; }
     public decimal Consultation { get;set; }
     public PaymentMode PaymentMode { get; set; }
 }

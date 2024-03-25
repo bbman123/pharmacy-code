@@ -21,14 +21,21 @@ public class ReferersController : ControllerBase
     }
 
     [HttpPost("paged")]
-    public async Task<ActionResult<GridDataResponse<Referer>>> PagedReferers(PaginationParameter parameter, CancellationToken cancellationToken)
+    public async Task<ActionResult<GridDataResponse<Referer>>> PagedReferers(PaginationParameter parameters, CancellationToken cancellationToken)
     {
-        IQueryable<Referer> query;
-        Referer[] data = [];
-        data = await _context.Referers.AsNoTracking().ToArrayAsync(cancellationToken);
-        query = string.IsNullOrEmpty(parameter.SearchTerm) == true ? data.AsQueryable() : data.Where(x => x.ToString()!.Contains(parameter!.SearchTerm!, StringComparison.InvariantCultureIgnoreCase)).AsQueryable();
-        var pagedResult = Paginate(query, parameter);
-        return Ok(pagedResult);
+        var response = new GridDataResponse<Referer>()
+        {
+            Data = await _context.Referers.AsNoTracking()
+                                          .AsSplitQuery()
+                                          .Include(o => o.OrderReferers)
+                                          .OrderByDescending(c => c.ModifiedDate)
+                                          .Skip(parameters.Page)
+                                          .Take(parameters.PageSize)
+                                          .ToListAsync(cancellationToken),
+            TotalCount = await _context.Referers.CountAsync()
+
+        };
+        return response;
     }
 
     [HttpGet]
@@ -41,6 +48,8 @@ public class ReferersController : ControllerBase
     public async Task<ActionResult<IEnumerable<Referer>>> GetReferers(RefererType type)
     {
         return await _context.Referers.AsNoTracking()
+                                      .AsSplitQuery()
+                                      .Include(o => o.OrderReferers)
                                       .Where(x => x.Type == type)
                                       .OrderBy(x => x.RefererName)
                                       .ToArrayAsync();
@@ -53,21 +62,27 @@ public class ReferersController : ControllerBase
         {
             return NotFound();
         }
-        var category = await _context.Referers.FindAsync(id);
-        return category;
+        var referrer = await _context.Referers.AsNoTracking()
+                                              .AsSplitQuery()
+                                              .Include(o => o.OrderReferers)
+                                              .ThenInclude(o => o.LabOrder)
+                                              .Include(o => o.OrderReferers)
+                                              .ThenInclude(o => o.PharmacyOrder)
+                                              .SingleOrDefaultAsync(x => x.Id == id);
+        return referrer;
     }
 
     // PUT: api/Referer/5
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutReferer(Guid id, Referer category)
+    public async Task<IActionResult> PutReferer(Guid id, Referer referrer)
     {
-        if (id != category.Id)
+        if (id != referrer.Id)
         {
             return BadRequest();
         }
 
-        _context.Entry(category).State = EntityState.Modified;
+        _context.Entry(referrer).State = EntityState.Modified;
 
         try
         {
@@ -92,19 +107,29 @@ public class ReferersController : ControllerBase
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
 
     [HttpPost]
-    public async Task<ActionResult<Referer>> PostReferer(Referer category)
+    public async Task<ActionResult<Referer>> PostReferer(Referer referrer)
     {
         if (_context.Referers == null)
         {
             return Problem("Entity set 'AppDbContext.Referers'  is null.");
         }
-        _context.Referers.Add(category);
+        _context.Referers.Add(referrer);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction("GetReferer", new { id = category.Id }, category);
+        return CreatedAtAction("GetReferer", new { id = referrer.Id }, referrer);
     }
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.Referers.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.Referers.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
     public static GridDataResponse<Referer> Paginate(IQueryable<Referer> source, PaginationParameter parameters)
     {

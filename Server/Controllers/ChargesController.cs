@@ -23,12 +23,10 @@ public class ChargesController : ControllerBase
     [HttpPost("paged")]
     public async Task<ActionResult<GridDataResponse<Charge>>> PagedCharges(PaginationParameter parameter, CancellationToken cancellationToken)
     {
-        IQueryable<Charge> query;
-        Charge[] data = [];
-        data = await _context.Charges.AsNoTracking().ToArrayAsync(cancellationToken);
-        query = string.IsNullOrEmpty(parameter.SearchTerm) == true ? data.AsQueryable() : data.Where(x => x.ToString()!.Contains(parameter!.SearchTerm!, StringComparison.InvariantCultureIgnoreCase)).AsQueryable();
-        var pagedResult = Paginate(query, parameter);
-        return Ok(pagedResult);
+        GridDataResponse<Charge> response = new();
+        response!.Data = await _context.Charges.OrderByDescending(o => o.ModifiedDate).Skip(parameter.Page).Take(parameter.PageSize).ToListAsync();
+        response!.TotalCount = await _context.Charges.CountAsync();
+        return response;
     }
 
     [HttpGet]
@@ -95,7 +93,17 @@ public class ChargesController : ControllerBase
         return CreatedAtAction("GetCharge", new { id = category.Id }, category);
     }
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.Charges.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
+        _context.Charges.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
     public static GridDataResponse<Charge> Paginate(IQueryable<Charge> source, PaginationParameter parameters)
     {

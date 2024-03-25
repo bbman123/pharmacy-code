@@ -20,7 +20,9 @@ namespace Shared.Models.Orders
         [Column(TypeName = "decimal(18, 2)")]
         public decimal TotalAmount { get; set; }
         [Column(TypeName = "decimal(18, 2)")]
-        public decimal SubTotal => TotalAmount;
+        public decimal Discount { get; set; }
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal SubTotal => TotalAmount - Discount;
         public TestStatus Status { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime ModifiedDate { get; set; }

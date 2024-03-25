@@ -95,8 +95,18 @@ public class StoresController : ControllerBase
 	}
 
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var record = await _context.Stores.FindAsync(id);
+        if (record is null)
+            return NotFound();
 
-	public static GridDataResponse<Store> Paginate(IQueryable<Store> source, PaginationParameter parameters)
+        _context.Stores.Remove(record);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+    public static GridDataResponse<Store> Paginate(IQueryable<Store> source, PaginationParameter parameters)
 	{
 		int totalItems = source.Count();
 		int totalPages = (int)Math.Ceiling((double)totalItems / parameters.PageSize);
